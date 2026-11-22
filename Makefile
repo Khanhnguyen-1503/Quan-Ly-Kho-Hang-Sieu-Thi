@@ -29,7 +29,7 @@ test_kho: $(KHO) tests/test_kho.cpp
 test_report: $(KHO) Sort.cpp Report.cpp tests/test_report.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@
 
-test_dulieu: BTree.cpp Date.cpp DataGen.cpp tests/test_dulieu.cpp
+test_dulieu: BTree.cpp Date.cpp DataGen.cpp FileIO.cpp tests/test_dulieu.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@
 
 bench_btree: BTree.cpp Benchmark.cpp tests/bench_btree.cpp

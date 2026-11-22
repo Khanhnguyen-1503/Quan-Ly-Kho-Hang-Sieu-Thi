@@ -1,5 +1,5 @@
 // tests/test_dulieu.cpp - kiem tra tep du lieu mathang.txt, lo.txt, phieu.txt
-// Bien dich: g++ -std=c++17 -O2 -Wall -Wextra -I. BTree.cpp Date.cpp DataGen.cpp tests/test_dulieu.cpp -o test_dulieu
+// Bien dich: g++ -std=c++17 -O2 -Wall -Wextra -I. BTree.cpp Date.cpp DataGen.cpp FileIO.cpp tests/test_dulieu.cpp -o test_dulieu
 // Chay:      ./test_dulieu data                 kiem tra 3 tep trong thu muc data/
 //            ./test_dulieu <thuMuc> --sinh N    sinh N mat hang bang sinhDuLieuMau roi kiem tra
 //            ./test_dulieu <thuMuc> --lon N     sinh N mat hang bang sinhDuLieuLon, nap vao B-Tree
@@ -13,6 +13,7 @@
 #include "BTree.h"
 #include "DataGen.h"
 #include "Date.h"
+#include "FileIO.h"
 
 static int soLoi = 0, soCanhBao = 0;
 
@@ -71,8 +72,8 @@ static bool maVachHopLe(const std::string& s) {
     return true;
 }
 
-struct LoDoc { std::string maVach, maLo; Date nhap, hsd; int sl; };
-struct PhieuDoc { std::string ma; bool xuat; Date ngay; std::string maVach; int sl; };
+struct LoDoc { std::string maVach, maLo; int so; Date nhap, hsd; int sl; };
+struct PhieuDoc { std::string ma; int so; bool xuat; Date ngay; std::string maVach; int sl; };
 
 static MatHang* taoMH(const std::string& ma) {
     MatHang* mh = new MatHang;
@@ -91,6 +92,40 @@ static void thuVienDong(std::string& s, bool& coCR) {
 }
 
 // ---- Kiem tra --------------------------------------------------------------
+
+// Kiem thu cac ham quy doi ma trong FileIO
+static void testQuyDoiMa() {
+    int so = -1;
+    LoaiPhieu lp;
+    struct { const char* s; bool ok; int so; } lo[] = {
+        {"LO00001", true, 1}, {"LO12345", true, 12345}, {"LO123456", true, 123456}, {"LO7", true, 7},
+        {"LO999999999", true, 999999999}, {"LO1234567890", false, 0}, {"LO00000", false, 0},
+        {"LO", false, 0}, {"lo00001", false, 0}, {"L000001", false, 0}, {"00001", false, 0},
+        {"LO0000a", false, 0}, {"LO-0001", false, 0}, {"LO 0001", false, 0}, {"", false, 0}};
+    for (auto& t : lo) {
+        bool ok = tachMaLo(t.s, so);
+        if (ok != t.ok || (ok && so != t.so)) baoCao(true, "tachMaLo", t.s);
+    }
+    if (taoMaLo(1) != "LO00001" || taoMaLo(123456) != "LO123456") baoCao(true, "taoMaLo", "");
+    if (!tachMaPhieu("PN00006", PHIEU_NHAP, so) || so != 6) baoCao(true, "tachMaPhieu", "PN00006");
+    if (!tachMaPhieu("PX00042", PHIEU_XUAT, so) || so != 42) baoCao(true, "tachMaPhieu", "PX00042");
+    if (tachMaPhieu("PX00006", PHIEU_NHAP, so)) baoCao(true, "tachMaPhieu nhan sai loai", "PX00006 + NHAP");
+    if (tachMaPhieu("PN00006", PHIEU_XUAT, so)) baoCao(true, "tachMaPhieu nhan sai loai", "PN00006 + XUAT");
+    if (tachMaPhieu("6", PHIEU_NHAP, so)) baoCao(true, "tachMaPhieu nhan so tran", "6");
+    if (taoMaPhieu(6, PHIEU_NHAP) != "PN00006" || taoMaPhieu(6, PHIEU_XUAT) != "PX00006")
+        baoCao(true, "taoMaPhieu", "");
+    if (!tachLoaiPhieu("NHAP", lp) || lp != PHIEU_NHAP || !tachLoaiPhieu("XUAT", lp) || lp != PHIEU_XUAT ||
+        tachLoaiPhieu("nhap", lp) || tachLoaiPhieu("", lp))
+        baoCao(true, "tachLoaiPhieu", "");
+    if (std::string(tenLoaiPhieu(PHIEU_NHAP)) != "NHAP" || std::string(tenLoaiPhieu(PHIEU_XUAT)) != "XUAT")
+        baoCao(true, "tenLoaiPhieu", "");
+    // Doc roi ghi lai phai ra dung chuoi cu
+    for (int v = 1; v <= 200000; v += 997) {
+        if (!tachMaLo(taoMaLo(v), so) || so != v) baoCao(true, "LO khu hoi", taoMaLo(v));
+        if (!tachMaPhieu(taoMaPhieu(v, PHIEU_XUAT), PHIEU_XUAT, so) || so != v)
+            baoCao(true, "PX khu hoi", taoMaPhieu(v, PHIEU_XUAT));
+    }
+}
 
 static void kiemTraThuMuc(const std::string& thuMuc) {
     std::string tepMH = thuMuc + "/mathang.txt", tepLo = thuMuc + "/lo.txt", tepP = thuMuc + "/phieu.txt";
@@ -140,22 +175,23 @@ static void kiemTraThuMuc(const std::string& thuMuc) {
         if (s.empty()) continue;
         std::snprintf(buf, sizeof buf, "lo.txt dong %d: ", dong);
         std::string vt = buf;
-        long long sl, tmp; double gia;
+        long long sl; double gia;
         LoDoc lo;
         if (tach(s, tr) != 6) { baoCao(true, "so truong", vt + s); continue; }
         lo.maVach = tr[0];
         lo.maLo = tr[1];
         MatHang* mh = btSearch(cay, tr[0]);
         if (!mh) baoCao(true, "lo cua ma vach khong ton tai", vt + tr[0]);
-        if (!laSoNguyen(tr[1], tmp))
-            baoCao(false, "maLo khong phai so nguyen (Types.h: int maLo)", vt + tr[1]);
+        if (!tachMaLo(tr[1], lo.so)) { baoCao(true, "maLo sai dinh dang (LO + so)", vt + tr[1]); continue; }
+        if (taoMaLo(lo.so) != tr[1])
+            baoCao(false, "maLo khong o dang chuan", vt + tr[1] + " -> khi ghi lai se thanh " + taoMaLo(lo.so));
         bool ngayOk = parseDate(tr[2], lo.nhap) && parseDate(tr[3], lo.hsd);
         if (!ngayOk) baoCao(true, "ngay sai", vt + tr[2] + " / " + tr[3]);
         else if (soSanhDate(lo.nhap, lo.hsd) >= 0) baoCao(true, "hsd <= ngayNhap", vt + s);
         if (!laSoNguyen(tr[4], sl) || sl <= 0) { baoCao(true, "soLuong", vt + tr[4]); sl = 0; }
         if (!laSoThuc(tr[5], gia) || gia <= 0) baoCao(true, "giaNhap", vt + tr[5]);
         for (int k = 0; k < nLo; ++k)
-            if (dsLo[k].maLo == lo.maLo) { baoCao(true, "trung maLo", vt + lo.maLo); break; }
+            if (dsLo[k].so == lo.so) { baoCao(true, "trung maLo", vt + lo.maLo + " va " + dsLo[k].maLo); break; }
         if (ngayOk && soSanhDate(lo.hsd, hn) < 0) ++loHetHan;
         lo.sl = (int)sl;
         if (mh) mh->tonKho += lo.sl;
@@ -175,18 +211,19 @@ static void kiemTraThuMuc(const std::string& thuMuc) {
         if (s.empty()) continue;
         std::snprintf(buf, sizeof buf, "phieu.txt dong %d: ", dong);
         std::string vt = buf;
-        long long sl, tmp; double gia;
+        long long sl; double gia;
         PhieuDoc p;
         if (tach(s, tr) != 6) { baoCao(true, "so truong", vt + s); continue; }
         p.ma = tr[0];
-        if (!laSoNguyen(tr[0], tmp))
-            baoCao(false, "maPhieu khong phai so nguyen (Types.h: int maPhieu)", vt + tr[0]);
-        if (tr[1] == "NHAP") p.xuat = false;
-        else if (tr[1] == "XUAT") p.xuat = true;
-        else { baoCao(true, "loai phieu", vt + tr[1]); continue; }
-        if (tr[0].size() >= 2 && tr[0].compare(0, 2, p.xuat ? "PX" : "PN") != 0 &&
-            (tr[0][0] < '0' || tr[0][0] > '9'))
-            baoCao(true, "tien to ma phieu khong khop loai", vt + s);
+        LoaiPhieu loai;
+        if (!tachLoaiPhieu(tr[1], loai)) { baoCao(true, "loai phieu (NHAP/XUAT)", vt + tr[1]); continue; }
+        p.xuat = loai == PHIEU_XUAT;
+        if (!tachMaPhieu(tr[0], loai, p.so)) {
+            baoCao(true, "maPhieu sai dinh dang hoac tien to khong khop loai (PN/PX + so)", vt + s);
+            continue;
+        }
+        if (taoMaPhieu(p.so, loai) != tr[0])
+            baoCao(false, "maPhieu khong o dang chuan", vt + tr[0] + " -> khi ghi lai se thanh " + taoMaPhieu(p.so, loai));
         if (!parseDate(tr[2], p.ngay)) { baoCao(true, "ngay sai", vt + tr[2]); continue; }
         p.maVach = tr[3];
         MatHang* mh = btSearch(cay, tr[3]);
@@ -194,7 +231,10 @@ static void kiemTraThuMuc(const std::string& thuMuc) {
         if (!laSoNguyen(tr[4], sl) || sl <= 0) { baoCao(true, "soLuong", vt + tr[4]); sl = 0; }
         if (!laSoThuc(tr[5], gia) || gia <= 0) baoCao(true, "donGia", vt + tr[5]);
         for (int k = 0; k < nP; ++k)
-            if (dsP[k].ma == p.ma) { baoCao(true, "trung maPhieu", vt + p.ma); break; }
+            if (dsP[k].so == p.so) {   // PN va PX dung chung day so
+                baoCao(true, "trung so phieu", vt + p.ma + " va " + dsP[k].ma);
+                break;
+            }
         p.sl = (int)sl;
         if (mh) mh->demTam += p.xuat ? -p.sl : p.sl;
         dsP[nP++] = p;
@@ -298,6 +338,8 @@ static void kiemTraLon(const std::string& tep, int n) {
 }
 
 int main(int argc, char** argv) {
+    testQuyDoiMa();
+    std::printf("Ham quy doi maLo/maPhieu: %s\n", soLoi == 0 ? "dung" : "CO LOI");
     std::string thuMuc = argc > 1 ? argv[1] : "data";
     if (argc > 3 && std::strcmp(argv[2], "--sinh") == 0) {
         int n = std::atoi(argv[3]);
