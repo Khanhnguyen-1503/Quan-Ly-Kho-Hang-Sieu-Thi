@@ -13,7 +13,7 @@ CPPFLAGS += -I.
 
 KHO = BTree.cpp Date.cpp LotQueue.cpp Phieu.cpp Inventory.cpp
 
-TESTS = test_btree test_date test_kho test_dulieu
+TESTS = test_btree test_date test_kho test_report test_dulieu
 
 all: $(TESTS) bench_btree gen_data
 
@@ -24,6 +24,9 @@ test_date: Date.cpp tests/test_date.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@
 
 test_kho: $(KHO) tests/test_kho.cpp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@
+
+test_report: $(KHO) Sort.cpp Report.cpp tests/test_report.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@
 
 test_dulieu: BTree.cpp Date.cpp DataGen.cpp tests/test_dulieu.cpp
@@ -39,6 +42,7 @@ test: $(TESTS)
 	./test_btree
 	./test_date
 	./test_kho
+	./test_report
 	./test_dulieu data
 
 bench: bench_btree
