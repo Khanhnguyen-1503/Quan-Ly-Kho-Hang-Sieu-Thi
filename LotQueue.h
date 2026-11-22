@@ -1,12 +1,14 @@
-// LotQueue.h - Minh Tan
-// Hang doi FIFO cac lo nhap cua mot mat hang (DSLK tu cai). front = lo cu nhat.
+// LotQueue.h - Hang doi FIFO cac lo nhap cua mot mat hang (DSLK don co front/rear)
+// Phu trach: Minh Tan
 #pragma once
 #include "Types.h"
 
 void lqInit(LotQueue& q);
-Lo*  taoLo(int maLo, const Date& ngayNhap, const Date& hsd, int soLuong, double giaNhap);  // new Lo, next = nullptr
-void lqEnqueue(LotQueue& q, Lo* lo);     // them vao cuoi (lo moi nhat)
-Lo*  lqFront(const LotQueue& q);         // lo cu nhat, nullptr neu rong
-Lo*  lqDequeue(LotQueue& q);             // go lo cu nhat ra va tra ve; nguoi goi delete
-int  lqTongSoLuong(const LotQueue& q);   // tong soLuong cac lo = tonKho
-void lqClear(LotQueue& q);               // delete tat ca lo
+bool lqRong(const LotQueue& q);
+void lqEnqueue(LotQueue& q, Lo* lo);     // them vao cuoi. O(1)
+Lo*  lqFront(const LotQueue& q);         // lo cu nhat. O(1)
+Lo*  lqDequeue(LotQueue& q);             // go lo cu nhat ra (khong delete). O(1)
+int  lqTongSoLuong(const LotQueue& q);   // tong so luong cac lo. O(k)
+void lqClear(LotQueue& q);               // delete het cac lo
+
+Lo* taoLo(int maLo, const Date& ngayNhap, const Date& hsd, int soLuong, double giaNhap);

@@ -1,32 +1,33 @@
-// Inventory.h - Minh Tan
-// Kho = B-Tree mat hang + danh sach phieu. Xuat kho theo FIFO lo.
+// Inventory.h - Nghiep vu kho: them/xoa mat hang, nhap kho, xuat kho FIFO
+// Phu trach: Minh Tan (goi ham cua BTree, LotQueue, Phieu)
 #pragma once
 #include <string>
 #include "Types.h"
-#include "BTree.h"
 
 struct Kho {
-    BTree cay;             // B-Tree mat hang (giu MatHang*)
-    DanhSachPhieu dsPhieu; // tat ca phieu nhap/xuat
-    int maLoKeTiep;        // cap maLo cho lo moi
+    BTree         cay;
+    DanhSachPhieu phieu;
+    int           maLoKeTiep;
 };
 
-void khoInit(Kho& kho, int m);   // m = bac B-Tree
-void khoDestroy(Kho& kho);       // delete moi MatHang (kem cac lo), phieu, nut cay
+void khoInit(Kho& kho, int bacCay);
+void khoGiaiPhong(Kho& kho);   // giai phong cay, mat hang, lo, phieu
 
-// new MatHang, gan tonKho = 0, demTam = 0, dsLo rong
-MatHang* taoMatHang(const std::string& maVach, const std::string& ten, const std::string& nhom,
-                    double donGia, int nguongCanhBao);
-
+// Mat hang
 KetQua   themMatHang(Kho& kho, const std::string& maVach, const std::string& ten,
-                     const std::string& nhom, double donGia, int nguongCanhBao);   // KQ_TRUNG_MA
-KetQua   suaMatHang(Kho& kho, const std::string& maVach, const std::string& ten,
-                    const std::string& nhom, double donGia, int nguongCanhBao);    // khong sua maVach
-KetQua   xoaMatHang(Kho& kho, const std::string& maVach);   // KQ_CON_TON_KHO neu tonKho > 0
+                     const std::string& nhom, double donGia, int nguongCanhBao);
+KetQua   suaMatHang(Kho& kho, const std::string& maVach, const std::string& tenMoi,
+                    const std::string& nhomMoi, double donGiaMoi, int nguongMoi);
+KetQua   xoaMatHang(Kho& kho, const std::string& maVach, bool xoaKeCaTonKho);
 MatHang* timMatHang(Kho& kho, const std::string& maVach);
 
-// Phieu nhap: tao lo moi o cuoi hang doi, cong tonKho, ghi phieu
+// Phieu nhap: tao lo moi o cuoi hang doi, tang ton kho, ghi phieu
 KetQua nhapKho(Kho& kho, const std::string& maVach, int soLuong, double giaNhap,
-               const Date& ngayNhap, const Date& hsd);
-// Phieu xuat: lay tu lo cu nhat, thieu thi lay tiep lo sau; KQ_KHONG_DU_HANG neu tonKho < soLuong
-KetQua xuatKho(Kho& kho, const std::string& maVach, int soLuong, const Date& ngay);
+               const Date& hsd, const Date& ngay, int* maPhieuOut);
+
+// Phieu xuat: lay tu lo cu nhat; lo het thi dequeue va lay tiep lo sau
+// Tra KQ_KHONG_DU_HANG neu soLuong > tonKho (khong xuat gi ca)
+KetQua xuatKho(Kho& kho, const std::string& maVach, int soLuong, const Date& ngay,
+               int* maPhieuOut);
+
+void inChiTietMatHang(const MatHang& mh);   // thong tin + danh sach lo
