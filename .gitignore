@@ -2,3 +2,6 @@ test_btree
 bench_btree
 *.exe
 *.o
+test_date
+test_dulieu
+gen_data
