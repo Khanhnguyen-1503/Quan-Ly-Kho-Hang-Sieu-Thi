@@ -1,0 +1,9 @@
+test_btree
+bench_btree
+test_date
+test_dulieu
+test_kho
+test_report
+gen_data
+*.exe
+*.o
