@@ -1,21 +1,15 @@
-// Report.h - Long Vu
-// Tim kiem, liet ke, canh bao va bao cao. Mang tra ve qua tham so out: nguoi goi delete[].
-#pragma once
-#include <string>
-#include "Types.h"
-#include "Inventory.h"
+#ifndef REPORT_H
+#define REPORT_H
+#include "Sort.h"
+// Canh bao ton kho
+void warnLowStock(vector<Product> ds);
+// Canh bao het han trong 7 ngay
+void warnExpiring(vector<Product> ds);
+// Bao cao gia tri ton kho theo nhom
+void reportInventory(vector<Product> ds);
+// Top 10 mat hang ban chay
+void reportTop10(vector<Product> ds,
+                 vector<ExportSlip> slips,
+                 int month, int year);
 
-void timTheoTen(const Kho& kho, const std::string& tuKhoa, DsMatHang& kq);   // chuoi con, khong phan biet hoa thuong
-void lietKeTheoNhom(const Kho& kho, const std::string& nhom, DsMatHang& kq);
-void canhBaoSapHetHang(const Kho& kho, DsMatHang& kq);                       // tonKho < nguongCanhBao
-
-// Cac lo con hang co HSD trong [homNay, homNay + soNgay]; sap theo HSD. Tra ve so phan tu.
-int canhBaoSapHetHan(const Kho& kho, const Date& homNay, int soNgay, CanhBaoHSD*& kq);
-int baoCaoGiaTriTheoNhom(const Kho& kho, GiaTriNhom*& kq);
-// demTam = 0 -> duyet phieu xuat trong thang -> btSearch, cong demTam -> gom demTam > 0 -> sap giam -> lay k
-int topBanChay(Kho& kho, int thang, int nam, int k, BanChay*& kq);
-
-void inBangMatHang(const DsMatHang& ds);
-void inBangCanhBaoHSD(const CanhBaoHSD* a, int n);
-void inBangGiaTriNhom(const GiaTriNhom* a, int n);
-void inBangBanChay(const BanChay* a, int n);
+#endif

@@ -1,20 +1,40 @@
-// Sort.h - Long Vu
-// Mang dong DsMatHang (thay vector) va Merge Sort tu cai.
-#pragma once
-#include "Types.h"
-
-void dsInit(DsMatHang& ds);
-void dsThem(DsMatHang& ds, MatHang* mh);   // tu gap doi cap khi day
-void dsClear(DsMatHang& ds);               // chi delete[] mang, khong delete MatHang
-
-typedef int (*SoSanhMH)(const MatHang* a, const MatHang* b);   // <0 neu a dung truoc b
-void mergeSort(MatHang** a, int n, SoSanhMH cmp);
-
-int ssTheoTen(const MatHang* a, const MatHang* b);
-int ssTheoTonKho(const MatHang* a, const MatHang* b);
-
-void sapXepTheoTen(DsMatHang& ds);
-void sapXepTheoTonKho(DsMatHang& ds);
-void sapXepTheoHSD(CanhBaoHSD* a, int n);      // HSD gan nhat truoc
-void sapXepBanChay(BanChay* a, int n);         // soLuongBan giam dan
-void sapXepGiaTriNhom(GiaTriNhom* a, int n);   // giaTriTon giam dan
+#ifndef SORT_H
+#define SORT_H
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;// Cau truc ngay thang
+struct Date {
+    int day, month, year;
+};
+// Thong tin mat hang
+struct Product {
+    string code;
+    string name;
+    string category;
+    double price;
+    int stock;
+    int minStock;
+    Date expiryDate;
+};
+// Thong tin mat hang trong phieu xuat
+struct ExportItem {
+    string productCode;
+    int quantity;
+};
+// Thong tin phieu xuat
+struct ExportSlip {
+    string slipCode;
+    Date exportDate;
+    vector<ExportItem> items;
+};
+// Cac ham xu ly ngay
+Date todayDate();
+Date addDays(Date d, int days);
+int daysBetween(Date a, Date b);
+// Tim kiem va liet ke
+void searchByName(vector<Product> ds, string ten);
+void listByCategory(vector<Product> ds);
+// Sap xep Merge Sort
+void mergeSort(vector<Product>& ds, int l, int r);
+#endif
