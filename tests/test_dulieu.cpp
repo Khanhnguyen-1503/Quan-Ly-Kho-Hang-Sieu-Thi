@@ -197,18 +197,40 @@ static void kiemTraThuMuc(const std::string& thuMuc) {
             if (dsP[k].ma == p.ma) { baoCao(true, "trung maPhieu", vt + p.ma); break; }
         p.sl = (int)sl;
         if (mh) mh->demTam += p.xuat ? -p.sl : p.sl;
-        if (!p.xuat) {   // phieu nhap phai khop mot lo
-            bool khop = false;
-            for (int k = 0; k < nLo && !khop; ++k)
-                khop = dsLo[k].maVach == p.maVach && dsLo[k].sl >= 0 &&
-                       soSanhDate(dsLo[k].nhap, p.ngay) == 0;
-            if (!khop) baoCao(true, "phieu nhap khong co lo tuong ung", vt + s);
-        }
         dsP[nP++] = p;
     }
 
+    bool kiemTraKy = (long long)nP * (nLo + nP) <= 200000000LL;
+
+    // Moi lo phai co phieu nhap (cung ma vach, cung ngay) va con lai <= so da nhap.
+    // FIFO: neu mot lo con hang thi moi lo nhap sau no phai con nguyen (chua bi xuat).
+    if (kiemTraKy) {
+        for (int k = 0; k < nLo; ++k) {
+            const LoDoc& lo = dsLo[k];
+            int goc = -1;
+            for (int i = 0; i < nP && goc < 0; ++i)
+                if (!dsP[i].xuat && dsP[i].maVach == lo.maVach && soSanhDate(dsP[i].ngay, lo.nhap) == 0)
+                    goc = dsP[i].sl;
+            if (goc < 0) { baoCao(true, "lo khong co phieu nhap", lo.maLo + " " + lo.maVach); continue; }
+            if (lo.sl > goc) baoCao(true, "lo con nhieu hon so da nhap", lo.maLo + " " + lo.maVach);
+            for (int i = 0; i < nP; ++i) {
+                const PhieuDoc& p = dsP[i];
+                if (p.xuat || p.maVach != lo.maVach || soSanhDate(p.ngay, lo.nhap) <= 0) continue;
+                bool conNguyen = false;
+                for (int q = 0; q < nLo; ++q)
+                    if (dsLo[q].maVach == p.maVach && soSanhDate(dsLo[q].nhap, p.ngay) == 0) {
+                        conNguyen = dsLo[q].sl == p.sl;
+                        break;
+                    }
+                if (!conNguyen)
+                    baoCao(true, "sai FIFO: lo cu con hang nhung lo moi hon da bi xuat",
+                           lo.maLo + " " + lo.maVach);
+            }
+        }
+    }
+
     // Phieu xuat khong duoc vuot so hang da nhap tinh den ngay xuat
-    if ((long long)nP * (nLo + nP) <= 200000000LL) {
+    if (kiemTraKy) {
         for (int i = 0; i < nP; ++i) {
             if (!dsP[i].xuat) continue;
             long long daNhap = 0, daXuat = 0;
@@ -222,7 +244,7 @@ static void kiemTraThuMuc(const std::string& thuMuc) {
                 baoCao(true, "xuat vuot hang da nhap den ngay do", dsP[i].ma + " " + dsP[i].maVach);
         }
     } else {
-        std::printf("  (bo qua kiem tra xuat vuot nhap vi du lieu lon)\n");
+        std::printf("  (du lieu lon: bo qua kiem tra lo-phieu nhap, FIFO va xuat vuot nhap)\n");
     }
 
     // tonKho tinh tu lo phai bang tong nhap - tong xuat theo phieu
@@ -233,7 +255,7 @@ static void kiemTraThuMuc(const std::string& thuMuc) {
             ++lech;
             std::snprintf(buf, sizeof buf, "%s: tong lo = %d, nhap - xuat theo phieu = %d",
                           mh->maVach.c_str(), mh->tonKho, mh->demTam);
-            baoCao(false, "lo.txt chua tru phan da xuat", buf);
+            baoCao(true, "tong lo != nhap - xuat (lo.txt chua tru phan da xuat?)", buf);
         }
     }
 
