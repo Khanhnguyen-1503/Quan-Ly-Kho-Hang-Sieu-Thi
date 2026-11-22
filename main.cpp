@@ -1,5 +1,5 @@
 #include <iostream>
-#include "../include/DataGen.h"
+#include "DataGen.h"
 
 int main() {
     std::cout << "Dang sinh du lieu mau (35 mat hang)...\n";

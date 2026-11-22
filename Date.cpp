@@ -1,4 +1,4 @@
-#include "../include/Date.h"
+#include "Date.h"
 #include <ctime>
 #include <cstdio>
 #include <sstream>
@@ -15,21 +15,21 @@ int soNgayTrongThang(int thang, int nam) {
 }
 
 bool laNgayHopLe(Date d) {
-    if (d.nam < 1900 || d.nam > 2100) return false;
-    if (d.thang < 1 || d.thang > 12) return false;
-    int maxNgay = soNgayTrongThang(d.thang, d.nam);
-    return d.ngay >= 1 && d.ngay <= maxNgay;
+    if (d.y < 1900 || d.y > 2100) return false;
+    if (d.m < 1 || d.m > 12) return false;
+    int maxNgay = soNgayTrongThang(d.m, d.y);
+    return d.d >= 1 && d.d <= maxNgay;
 }
 
 // Thuật toán quy đổi Date sang số ngày tuyệt đối (mốc 0000-03-01)
 long long dateToDays(Date d) {
-    long long y = d.nam;
-    long long m = d.thang;
+    long long y = d.y;
+    long long m = d.m;
     if (m <= 2) {
         y--;
         m += 12;
     }
-    return 365 * y + y / 4 - y / 100 + y / 400 + (153 * m - 457) / 5 + d.ngay - 306;
+    return 365 * y + y / 4 - y / 100 + y / 400 + (153 * m - 457) / 5 + d.d - 306;
 }
 
 Date daysToDate(long long totalDays) {
@@ -82,7 +82,7 @@ bool parseDate(const std::string& str, Date& outDate) {
 
 std::string formatDate(Date d) {
     char buf[16];
-    std::snprintf(buf, sizeof(buf), "%02d/%02d/%04d", d.ngay, d.thang, d.nam);
+    std::snprintf(buf, sizeof(buf), "%02d/%02d/%04d", d.d, d.m, d.y);
     return std::string(buf);
 }
 

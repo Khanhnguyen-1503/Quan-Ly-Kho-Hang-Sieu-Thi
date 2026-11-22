@@ -1,7 +1,6 @@
-#include "../include/DataGen.h"
-#include "../include/Date.h"
+#include "DataGen.h"
+#include "Date.h"
 #include <fstream>
-#include <vector>
 #include <cstdlib>
 #include <cstdio>
 
@@ -13,13 +12,15 @@ void sinhDuLieuMau(int soMatHang, const std::string& fileMatHang,
 
     if (!fMH || !fLo || !fPhieu) return;
 
-    const std::vector<std::string> nhomHang = {
+    const std::string nhomHang[] = {
         "Thuc pham tuoi", "Do uong", "Banh keo", "Gia vi", "Hoa my pham", "Do gia dung"
     };
-    const std::vector<std::string> tienToTen = {
+    const std::string tienToTen[] = {
         "Sua tuoi", "Mi goi", "Nuoc ngot", "Banh quy", "Dau an",
         "Nuoc mam", "Bot giat", "Dau goi", "Tra xanh", "Ca phe"
     };
+    const int soNhom = sizeof(nhomHang) / sizeof(nhomHang[0]);
+    const int soTienTo = sizeof(tienToTen) / sizeof(tienToTen[0]);
 
     Date today = homNay();
     int maLoCounter = 1;
@@ -32,8 +33,8 @@ void sinhDuLieuMau(int soMatHang, const std::string& fileMatHang,
         std::snprintf(maVachBuf, sizeof(maVachBuf), "893%010d", i);
         std::string maVach(maVachBuf);
 
-        std::string nhom = nhomHang[i % nhomHang.size()];
-        std::string ten = tienToTen[i % tienToTen.size()] + " Loai " + std::to_string(i);
+        std::string nhom = nhomHang[i % soNhom];
+        std::string ten = tienToTen[i % soTienTo] + " Loai " + std::to_string(i);
         double donGia = ((std::rand() % 50) + 1) * 5000.0;
         int nguongCanhBao = 10 + (std::rand() % 15);
 
