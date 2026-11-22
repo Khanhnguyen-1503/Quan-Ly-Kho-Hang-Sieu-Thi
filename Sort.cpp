@@ -1,97 +1,74 @@
+// Sort.cpp - Long Vu
 #include "Sort.h"
-#include <algorithm>
-#include <cctype>
-#include <ctime>
-// Chuyen chuoi thanh chu thuong
-string lowerText(string s) {
-    for (char& c : s)
-        c = tolower((unsigned char)c);
-    return s;
-}
-// Lay ngay hien tai
-Date todayDate() {
-    time_t now = time(0);
-    tm* t = localtime(&now);
-    return {t->tm_mday, t->tm_mon + 1,
-            t->tm_year + 1900};
-}
-// Cong them so ngay
-Date addDays(Date d, int days) {
-    tm t = {};
-    t.tm_mday = d.day + days;
-    t.tm_mon = d.month - 1;
-    t.tm_year = d.year - 1900;
-    mktime(&t);
-    return {t.tm_mday, t.tm_mon + 1,
-            t.tm_year + 1900};
-}
-// Tinh khoang cach giua hai ngay
-int daysBetween(Date a, Date b) {
-    tm x = {}, y = {};
-    x.tm_mday = a.day;
-    x.tm_mon = a.month - 1;
-    x.tm_year = a.year - 1900;
-    y.tm_mday = b.day;
-    y.tm_mon = b.month - 1;
-    y.tm_year = b.year - 1900;
-    time_t t1 = mktime(&x);
-    time_t t2 = mktime(&y);
-    return (int)(difftime(t2, t1) / 86400);
-}
-// 1. Tim kiem theo ten (chuoi con)
-void searchByName(vector<Product> ds, string ten) {
-    bool found = false;
-    for (auto p : ds) {
-        if (lowerText(p.name).find(lowerText(ten))
-            != string::npos) {
+#include "Date.h"
 
-            cout << p.code << " | "
-                 << p.name << " | "
-                 << p.category << " | Ton: "
-                 << p.stock << endl;
+// ---- Mang dong ---------------------------------------------------------------
 
-            found = true;
-        }
+void dsInit(DsMatHang& ds) {
+    ds.a = nullptr;
+    ds.n = 0;
+    ds.cap = 0;
+}
+
+void dsThem(DsMatHang& ds, MatHang* mh) {
+    if (ds.n == ds.cap) {
+        int capMoi = ds.cap == 0 ? 16 : ds.cap * 2;
+        MatHang** moi = new MatHang*[capMoi];
+        for (int i = 0; i < ds.n; ++i) moi[i] = ds.a[i];
+        delete[] ds.a;
+        ds.a = moi;
+        ds.cap = capMoi;
     }
-    if (!found)
-        cout << "Khong tim thay mat hang!\n";
+    ds.a[ds.n++] = mh;
 }
-// 2. Liet ke theo nhom hang
-void listByCategory(vector<Product> ds) {
-    sort(ds.begin(), ds.end(),
-         [](Product a, Product b) {
-             return a.category < b.category;
-         });
-    for (auto p : ds) {
-        cout << p.category << " | "
-             << p.name << " | Ton: "
-             << p.stock << endl;
+
+void dsClear(DsMatHang& ds) {
+    delete[] ds.a;
+    dsInit(ds);
+}
+
+// ---- So sanh ---------------------------------------------------------------
+
+static char thuong(char c) { return (c >= 'A' && c <= 'Z') ? (char)(c - 'A' + 'a') : c; }
+
+int soSanhKhongPhanBiet(const std::string& a, const std::string& b) {
+    size_t n = a.size() < b.size() ? a.size() : b.size();
+    for (size_t i = 0; i < n; ++i) {
+        char x = thuong(a[i]), y = thuong(b[i]);
+        if (x != y) return x < y ? -1 : 1;
     }
+    if (a.size() == b.size()) return 0;
+    return a.size() < b.size() ? -1 : 1;
 }
-// Ham tron hai nua da sap xep
-void merge(vector<Product>& ds, int l, int m, int r) {
-    vector<Product> temp;
-    int i = l;
-    int j = m + 1;
-    while (i <= m && j <= r) {
-        if (ds[i].name <= ds[j].name)
-            temp.push_back(ds[i++]);
-        else
-            temp.push_back(ds[j++]);
-    }
-    while (i <= m)
-        temp.push_back(ds[i++]);
-    while (j <= r)
-        temp.push_back(ds[j++]);
-    for (int k = 0; k < temp.size(); k++)
-        ds[l + k] = temp[k];
+
+// Trung khoa chinh thi xet ma vach, de ket qua luon xac dinh
+static bool truocTheoTen(MatHang* const& x, MatHang* const& y) {
+    int c = soSanhKhongPhanBiet(x->ten, y->ten);
+    return c != 0 ? c < 0 : x->maVach < y->maVach;
 }
-// 3. Thuat toan Merge Sort
-void mergeSort(vector<Product>& ds, int l, int r) {
-    if (l >= r)
-        return;
-    int m = (l + r) / 2;
-    mergeSort(ds, l, m);
-    mergeSort(ds, m + 1, r);
-    merge(ds, l, m, r);
+static bool truocTheoNhom(MatHang* const& x, MatHang* const& y) {
+    int c = soSanhKhongPhanBiet(x->nhom, y->nhom);
+    return c != 0 ? c < 0 : truocTheoTen(x, y);
 }
+static bool truocTheoTonKho(MatHang* const& x, MatHang* const& y) {
+    return x->tonKho != y->tonKho ? x->tonKho < y->tonKho : x->maVach < y->maVach;
+}
+static bool truocTheoHSD(const CanhBaoHSD& x, const CanhBaoHSD& y) {
+    int c = soSanhDate(x.lo->hsd, y.lo->hsd);
+    return c != 0 ? c < 0 : x.mh->maVach < y.mh->maVach;
+}
+static bool truocBanChay(const BanChay& x, const BanChay& y) {
+    return x.soLuongBan != y.soLuongBan ? x.soLuongBan > y.soLuongBan : x.mh->maVach < y.mh->maVach;
+}
+static bool truocGiaTriNhom(const GiaTriNhom& x, const GiaTriNhom& y) {
+    return x.giaTriTon != y.giaTriTon ? x.giaTriTon > y.giaTriTon : x.nhom < y.nhom;
+}
+
+// ---- Cac kieu sap xep ------------------------------------------------------
+
+void sapXepTheoTen(DsMatHang& ds) { mergeSort<MatHang*>(ds.a, ds.n, truocTheoTen); }
+void sapXepTheoNhom(DsMatHang& ds) { mergeSort<MatHang*>(ds.a, ds.n, truocTheoNhom); }
+void sapXepTheoTonKho(DsMatHang& ds) { mergeSort<MatHang*>(ds.a, ds.n, truocTheoTonKho); }
+void sapXepTheoHSD(CanhBaoHSD* a, int n) { mergeSort<CanhBaoHSD>(a, n, truocTheoHSD); }
+void sapXepBanChay(BanChay* a, int n) { mergeSort<BanChay>(a, n, truocBanChay); }
+void sapXepGiaTriNhom(GiaTriNhom* a, int n) { mergeSort<GiaTriNhom>(a, n, truocGiaTriNhom); }
