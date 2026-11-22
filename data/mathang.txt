@@ -1,0 +1,35 @@
+8930000000001|Mi goi Loai 1|Do uong|130000|20
+8930000000002|Nuoc ngot Loai 2|Banh keo|85000|19
+8930000000003|Banh quy Loai 3|Gia vi|195000|12
+8930000000004|Dau an Loai 4|Hoa my pham|185000|12
+8930000000005|Nuoc mam Loai 5|Do gia dung|165000|22
+8930000000006|Bot giat Loai 6|Thuc pham tuoi|30000|14
+8930000000007|Dau goi Loai 7|Do uong|95000|15
+8930000000008|Tra xanh Loai 8|Banh keo|120000|24
+8930000000009|Ca phe Loai 9|Gia vi|180000|23
+8930000000010|Sua tuoi Loai 10|Hoa my pham|30000|16
+8930000000011|Mi goi Loai 11|Do gia dung|240000|20
+8930000000012|Nuoc ngot Loai 12|Thuc pham tuoi|70000|14
+8930000000013|Banh quy Loai 13|Do uong|215000|13
+8930000000014|Dau an Loai 14|Banh keo|220000|11
+8930000000015|Nuoc mam Loai 15|Gia vi|250000|21
+8930000000016|Bot giat Loai 16|Hoa my pham|240000|20
+8930000000017|Dau goi Loai 17|Do gia dung|40000|13
+8930000000018|Tra xanh Loai 18|Thuc pham tuoi|65000|22
+8930000000019|Ca phe Loai 19|Do uong|115000|12
+8930000000020|Sua tuoi Loai 20|Banh keo|145000|24
+8930000000021|Mi goi Loai 21|Gia vi|50000|16
+8930000000022|Nuoc ngot Loai 22|Hoa my pham|20000|16
+8930000000023|Banh quy Loai 23|Do gia dung|20000|17
+8930000000024|Dau an Loai 24|Thuc pham tuoi|170000|20
+8930000000025|Nuoc mam Loai 25|Do uong|80000|24
+8930000000026|Bot giat Loai 26|Banh keo|125000|14
+8930000000027|Dau goi Loai 27|Gia vi|60000|15
+8930000000028|Tra xanh Loai 28|Hoa my pham|190000|16
+8930000000029|Ca phe Loai 29|Do gia dung|90000|18
+8930000000030|Sua tuoi Loai 30|Thuc pham tuoi|50000|16
+8930000000031|Mi goi Loai 31|Do uong|25000|10
+8930000000032|Nuoc ngot Loai 32|Banh keo|105000|11
+8930000000033|Banh quy Loai 33|Gia vi|225000|14
+8930000000034|Dau an Loai 34|Hoa my pham|140000|21
+8930000000035|Nuoc mam Loai 35|Do gia dung|175000|23
