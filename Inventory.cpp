@@ -4,26 +4,11 @@
 #include "BTree.h"
 #include "LotQueue.h"
 #include "Phieu.h"
+#include "Date.h"
 #include <iostream>
 #include <iomanip>
 #include <cmath>
 #include <limits>
-
-// Kiem tra ngay tai cho, khong phu thuoc ten ham cua module Date.
-static bool ngayHopLe(const Date& x) {
-    if (x.y < 1 || x.m < 1 || x.m > 12 || x.d < 1) return false;
-    const int ngayThang[] = {0,31,28,31,30,31,30,31,31,30,31,30,31};
-    int gioiHan = ngayThang[x.m];
-    bool nhuan = (x.y % 400 == 0) || (x.y % 4 == 0 && x.y % 100 != 0);
-    if (x.m == 2 && nhuan) ++gioiHan;
-    return x.d <= gioiHan;
-}
-
-static bool truocNgay(const Date& a, const Date& b) {
-    if (a.y != b.y) return a.y < b.y;
-    if (a.m != b.m) return a.m < b.m;
-    return a.d < b.d;
-}
 
 static bool maVachHopLe(const std::string& s) {
     if (s.size() != 8 && s.size() != 13) return false;
@@ -119,7 +104,7 @@ MatHang* timMatHang(Kho& kho, const std::string& maVach) {
 KetQua nhapKho(Kho& kho, const std::string& maVach, int soLuong, double giaNhap,
                const Date& hsd, const Date& ngay, int* maPhieuOut) {
     if (soLuong <= 0 || !std::isfinite(giaNhap) || giaNhap < 0 ||
-        !ngayHopLe(ngay) || !ngayHopLe(hsd) || truocNgay(hsd, ngay))
+        !laNgayHopLe(ngay) || !laNgayHopLe(hsd) || soSanhDate(hsd, ngay) < 0)
         return KQ_DU_LIEU_SAI;
 
     MatHang* mh = btSearch(kho.cay, maVach);
@@ -147,7 +132,7 @@ KetQua nhapKho(Kho& kho, const std::string& maVach, int soLuong, double giaNhap,
 // Xuat kho FIFO: Lay tu lo cu nhat (front). Neu lo het thi dequeue va lay tiep lo sau
 KetQua xuatKho(Kho& kho, const std::string& maVach, int soLuong, const Date& ngay,
                int* maPhieuOut) {
-    if (soLuong <= 0 || !ngayHopLe(ngay)) return KQ_DU_LIEU_SAI;
+    if (soLuong <= 0 || !laNgayHopLe(ngay)) return KQ_DU_LIEU_SAI;
 
     MatHang* mh = btSearch(kho.cay, maVach);
     if (!mh) return KQ_KHONG_TIM_THAY;
@@ -209,8 +194,8 @@ void inChiTietMatHang(const MatHang& mh) {
                   << std::setw(10) << "So Luong"
                   << std::setw(12) << "Gia Nhap" << "\n";
         for (Lo* lo = mh.dsLo.front; lo != nullptr; lo = lo->next) {
-            std::string sNgay = std::to_string(lo->ngayNhap.d) + "/" + std::to_string(lo->ngayNhap.m) + "/" + std::to_string(lo->ngayNhap.y);
-            std::string sHsd  = std::to_string(lo->hsd.d) + "/" + std::to_string(lo->hsd.m) + "/" + std::to_string(lo->hsd.y);
+            std::string sNgay = formatDate(lo->ngayNhap);
+            std::string sHsd  = formatDate(lo->hsd);
             std::cout << "  " << std::left << std::setw(8) << lo->maLo
                       << std::setw(14) << sNgay
                       << std::setw(14) << sHsd

@@ -1,5 +1,5 @@
 // tests/test_kho.cpp - kiem thu LotQueue, Phieu, Inventory (Minh Tan)
-// Bien dich: g++ -std=c++17 -Wall -Wextra -I. BTree.cpp LotQueue.cpp Phieu.cpp Inventory.cpp tests/test_kho.cpp -o test_kho
+// Bien dich: g++ -std=c++17 -Wall -Wextra -I. BTree.cpp Date.cpp LotQueue.cpp Phieu.cpp Inventory.cpp tests/test_kho.cpp -o test_kho
 #include <climits>
 #include <cmath>
 #include <cstdio>
@@ -166,6 +166,8 @@ static void testNhapXuat() {
     KIEMTRA(nhapKho(kho, ma, 5, 1, D(31, 10, 2026), D(1, 11, 2026), nullptr) == KQ_DU_LIEU_SAI, "hsd truoc ngay nhap");
     KIEMTRA(nhapKho(kho, ma, 5, 1, D(30, 2, 2027), D(1, 11, 2026), nullptr) == KQ_DU_LIEU_SAI, "hsd 30/02");
     KIEMTRA(nhapKho(kho, ma, 5, 1, D(1, 1, 2027), D(31, 11, 2026), nullptr) == KQ_DU_LIEU_SAI, "ngay nhap 31/11");
+    KIEMTRA(nhapKho(kho, ma, 5, 1, D(1, 1, 2027), D(1, 11, 1899), nullptr) == KQ_DU_LIEU_SAI, "nam ngoai 1900-2100 (Date.h)");
+    KIEMTRA(nhapKho(kho, ma, 5, 1, D(1, 1, 2101), D(1, 11, 2026), nullptr) == KQ_DU_LIEU_SAI, "hsd nam 2101");
     KIEMTRA(mh->tonKho == 0 && kho.phieu.count == 0 && kho.maLoKeTiep == 1, "nhap sai khong duoc thay doi gi");
 
     // Nhap 3 lo: 10, 20, 30

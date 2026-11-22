@@ -1,6 +1,7 @@
 // Phieu.cpp - Danh sach phieu nhap/xuat bang DSLK don
 // Nguoi thuc hien: Minh Tan
 #include "Phieu.h"
+#include "Date.h"
 #include <iostream>
 #include <iomanip>
 
@@ -57,13 +58,6 @@ Phieu* dspTimTheoMa(const DanhSachPhieu& ds, int maPhieu) {
     return nullptr;
 }
 
-// Helper so sanh ngay: < 0 (a < b), == 0, > 0
-static int ssNgay(const Date& a, const Date& b) {
-    if (a.y != b.y) return a.y - b.y;
-    if (a.m != b.m) return a.m - b.m;
-    return a.d - b.d;
-}
-
 // In danh sach phieu (co the loc theo khoang thoi gian)
 void dspIn(const DanhSachPhieu& ds, const Date* tu, const Date* den) {
     std::cout << "\n============================== DANH SACH PHIEU ==============================\n";
@@ -76,12 +70,10 @@ void dspIn(const DanhSachPhieu& ds, const Date* tu, const Date* den) {
     std::cout << "-----------------------------------------------------------------------------\n";
 
     for (Phieu* cur = ds.head; cur != nullptr; cur = cur->next) {
-        if (tu != nullptr && ssNgay(cur->ngay, *tu) < 0) continue;
-        if (den != nullptr && ssNgay(cur->ngay, *den) > 0) continue;
+        if (tu != nullptr && soSanhDate(cur->ngay, *tu) < 0) continue;
+        if (den != nullptr && soSanhDate(cur->ngay, *den) > 0) continue;
 
-        std::string sNgay = (cur->ngay.d < 10 ? "0" : "") + std::to_string(cur->ngay.d) + "/"
-                          + (cur->ngay.m < 10 ? "0" : "") + std::to_string(cur->ngay.m) + "/"
-                          + std::to_string(cur->ngay.y);
+        std::string sNgay = formatDate(cur->ngay);
 
         std::cout << std::left << std::setw(10) << cur->maPhieu
                   << std::setw(12) << (cur->loai == PHIEU_NHAP ? "Nhap kho" : "Xuat kho")
