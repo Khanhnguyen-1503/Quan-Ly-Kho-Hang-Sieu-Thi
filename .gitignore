@@ -2,3 +2,4 @@ test_btree
 bench_btree
 *.exe
 *.o
+test_kho

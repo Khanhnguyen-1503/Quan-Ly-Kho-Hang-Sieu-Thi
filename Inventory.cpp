@@ -37,10 +37,18 @@ void khoInit(Kho& kho, int bacCay) {
     kho.maLoKeTiep = 1;
 }
 
+// Ham goi lai cho btTraverse: giai phong cac lo va chinh mat hang
+static void giaiPhongMatHang(MatHang* mh, void*) {
+    lqClear(mh->dsLo);
+    delete mh;
+}
+
 void khoGiaiPhong(Kho& kho) {
     dspClear(kho.phieu);
-    // Xoa toan bo nut tren cay B-Tree va dong thoi xoa luon MatHang + cac Lo cua chung
-    btDestroy(kho.cay, true);
+    // B-Tree chi giu con tro MatHang* (btDestroy khong delete MatHang), nen Inventory
+    // duyet cay de delete tung MatHang + cac Lo truoc, roi moi giai phong cac nut cay.
+    btTraverse(kho.cay, giaiPhongMatHang, nullptr);
+    btDestroy(kho.cay);
 }
 
 // ---------------------- QUAN LY MAT HANG ----------------------
