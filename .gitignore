@@ -10,3 +10,14 @@ gen_data
 *.exe
 *.o
 *.tmp
+# LaTeX
+baocao/*.aux
+baocao/*.log
+baocao/*.toc
+baocao/*.lof
+baocao/*.lot
+baocao/*.out
+baocao/*.fls
+baocao/*.fdb_latexmk
+baocao/*.xdv
+baocao/*.synctex.gz

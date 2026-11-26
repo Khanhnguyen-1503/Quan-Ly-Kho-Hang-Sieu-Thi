@@ -10,7 +10,11 @@ make            # build chương trình chính ./quanlykho
 make run        # chạy menu với dữ liệu trong data/
 make test       # build và chạy toàn bộ test
 make bench      # thực nghiệm B-Tree m = 3, 5, 10 -> ketqua/ketqua_btree.csv
+make baocao     # biên dịch báo cáo LaTeX -> baocao/baocao.pdf (cần XeLaTeX)
 ```
+
+Báo cáo nằm trong `baocao/` (mỗi chương một tệp `chuongN.tex`; thông tin trường, giảng viên, MSSV
+điền ở đầu `baocao.tex`). Bảng và biểu đồ thực nghiệm đọc trực tiếp từ `ketqua/ketqua_btree.csv`.
 
 Windows (MinGW): dùng `mingw32-make`, chạy `quanlykho.exe data`.
 Không có make: `g++ -std=c++17 -O2 -I. *.cpp -o quanlykho`

@@ -4,6 +4,7 @@
 #   make test          build + chay tat ca test
 #   make bench         chay thuc nghiem B-Tree, ghi ketqua/ketqua_btree.csv
 #   make gen_data      chuong trinh rieng sinh du lieu mau (tools/gen_data.cpp)
+#   make baocao        bien dich bao cao LaTeX -> baocao/baocao.pdf (can XeLaTeX, TeX Live)
 #   make clean
 # Kiem tra ro ri / loi bo nho (Linux, macOS):
 #   make clean test CXXFLAGS="-std=c++17 -g -O1 -Wall -Wextra -fsanitize=address,undefined"
@@ -67,7 +68,10 @@ run: quanlykho
 bench: bench_btree
 	./bench_btree ketqua/ketqua_btree.csv
 
+baocao:
+	cd baocao && latexmk -xelatex -interaction=nonstopmode baocao.tex
+
 clean:
 	rm -f quanlykho $(TESTS) bench_btree gen_data *.o *.exe
 
-.PHONY: all test run bench clean test_menu
+.PHONY: all test run bench baocao clean test_menu

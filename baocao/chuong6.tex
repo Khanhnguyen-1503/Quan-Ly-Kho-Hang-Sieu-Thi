@@ -1,0 +1,103 @@
+% =============================================================================
+\chapter{Kết luận}\label{chap:ketluan}
+% =============================================================================
+
+\section{Kết quả đạt được}
+
+Nhóm đã xây dựng hoàn chỉnh chương trình quản lý kho hàng siêu thị bằng C++17, tự cài đặt mọi cấu trúc dữ liệu và
+thuật toán sắp xếp, không dùng \code{vector}, \code{map}, \code{sort} của STL. Đối chiếu với yêu cầu của đề tài
+(Bảng~\ref{tab:yeucau}):
+
+\begin{table}[htbp]
+\centering\small
+\caption{Mức độ hoàn thành yêu cầu}
+\label{tab:hoanthanh}
+\begin{tabularx}{\linewidth}{@{}Y c@{}}
+\toprule
+\textbf{Yêu cầu} & \textbf{Kết quả} \\
+\midrule
+B-Tree bậc $m$: tìm, chèn (tách), xóa (mượn, gộp), duyệt; bất biến được kiểm tra sau mỗi thao tác & \ok \\
+Hàng đợi FIFO các lô (DSLK); nhập tạo lô mới, xuất lấy từ lô cũ nhất và lấy tiếp các lô sau & \ok \\
+Danh sách phiếu (DSLK); cập nhật tồn kho luôn khớp tổng các lô & \ok \\
+Tìm theo tên (chuỗi con), liệt kê theo nhóm; Merge Sort tự cài & \ok \\
+Cảnh báo tồn dưới ngưỡng; cảnh báo hết hạn trong 7 ngày sắp theo HSD & \ok \\
+Báo cáo giá trị tồn theo nhóm; top 10 bán chạy trong tháng & \ok \\
+Đọc tệp khi khởi động, ghi khi thoát; kiểm tra mã trùng, sai kiểu, sai miền & \ok \\
+Dữ liệu mẫu 35 mặt hàng; bộ lớn $10^4$ và $10^5$; đo thời gian chạy & \ok \\
+Không rò rỉ bộ nhớ (kiểm tra bằng AddressSanitizer/LeakSanitizer) & \ok \\
+\emph{Nâng cao:} in cây sau mỗi lần tách/gộp nút & \ok \\
+\emph{Nâng cao:} đếm số nút truy xuất với $m = 3, 5, 10$ trên $10^5$ mặt hàng & \ok \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Thực nghiệm xác nhận lý thuyết: số nút truy xuất tăng theo $\log_t n$ và giảm khoảng 2,3 lần khi tăng bậc từ 3
+lên 10 (13,25 xuống 5,84 nút với $10^5$ mặt hàng); chiều cao nằm trong cận lý thuyết. Chương trình được kiểm thử
+bằng 7 bộ test tự động (hơn 40 nhóm ca bình thường, biên, sai) và kiểm thử ngẫu nhiên đối chiếu mô hình.
+
+Qua đồ án, nhóm rút ra một số bài học:
+\begin{itemize}
+  \item \textbf{Chốt giao diện chung sớm.} Việc thống nhất \code{Types.h}, tên hàm và định dạng tệp từ ngày đầu
+        giúp bốn mô-đun ghép lại được. Những chỗ chưa chốt kỹ (mã lô và mã phiếu trong tệp có tiền tố chữ trong
+        khi chương trình dùng số nguyên; tên hàm ngày) đều phải sửa khi ghép.
+  \item \textbf{Quy ước sở hữu bộ nhớ.} Quy định ``B-Tree chỉ giữ con trỏ, Inventory giải phóng'' tránh được lỗi
+        giải phóng hai lần. Khi ghép, lời gọi hủy cây kèm xóa luôn mặt hàng (trái quy ước) bị trình biên dịch báo lỗi và
+        được sửa lại để Inventory tự giải phóng; công cụ kiểm tra bộ nhớ xác nhận không còn rò rỉ.
+  \item \textbf{Dữ liệu dẫn xuất không nên lưu.} Tồn kho tính lại từ các lô nên không bao giờ lệch. Kiểm tra tự
+        động bộ dữ liệu mẫu đã phát hiện phiên bản đầu của bộ sinh dữ liệu ghi số lượng lô chưa trừ phần đã xuất.
+\end{itemize}
+
+\section{Hạn chế}
+
+\begin{itemize}
+  \item Toàn bộ dữ liệu nằm trong bộ nhớ; ưu điểm lớn nhất của B-Tree (ít lần đọc khối đĩa) chưa được khai thác.
+  \item Tìm theo tên phải duyệt toàn bộ cây, $O(n)$ mỗi lần tìm.
+  \item Xuất kho lấy đúng theo thứ tự nhập (FIFO) mà không bỏ qua lô đã quá hạn; cảnh báo HSD chỉ thông báo cho
+        người quản lý.
+  \item Mã vạch chỉ được kiểm tra độ dài và chữ số, chưa kiểm tra chữ số kiểm tra (check digit) của chuẩn EAN.
+  \item Khi đọc tệp, trùng mã lô giữa các mặt hàng khác nhau chưa được phát hiện (cần thêm một chỉ mục mã lô).
+  \item Giao diện dòng lệnh, tiếng Việt không dấu; một người dùng tại một thời điểm.
+\end{itemize}
+
+\section{Hướng phát triển}
+
+\begin{itemize}
+  \item Lưu B-Tree trên đĩa, mỗi nút là một khối, chỉ nạp các nút cần thiết; dùng B$^+$-Tree (dữ liệu ở lá, các lá
+        nối với nhau) để duyệt theo khoảng mã vạch nhanh hơn.
+  \item Thêm chỉ mục cho tên hàng (cây tiền tố hoặc chỉ mục ngược theo từ) để tìm theo tên nhanh hơn $O(n)$.
+  \item Xuất kho theo nguyên tắc FEFO (hết hạn trước, xuất trước) và tự động loại lô đã quá hạn.
+  \item Kiểm tra chữ số kiểm tra EAN; giao diện đồ họa; nhiều người dùng.
+\end{itemize}
+
+% =============================================================================
+% Tai lieu tham khao la mot muc cua Chuong 6 (theo de cuong), khong mo trang moi
+\begingroup
+\renewcommand{\chapter}[2]{\section*{#2}}
+\makeatletter\let\@mkboth\@gobbletwo\makeatother   % giu tieu de dau trang cua Chuong 6
+\small
+\begin{thebibliography}{9}
+\addcontentsline{toc}{section}{Tài liệu tham khảo}
+\setlength{\itemsep}{1pt}
+
+\bibitem{clrs} T. H. Cormen, C. E. Leiserson, R. L. Rivest, C. Stein.
+  \emph{Introduction to Algorithms}, 4th ed. MIT Press, 2022. Chương 18: B-Trees.
+
+\bibitem{bayer} R. Bayer, E. McCreight. Organization and Maintenance of Large Ordered Indexes.
+  \emph{Acta Informatica}, 1(3):173--189, 1972.
+
+\bibitem{comer} D. Comer. The Ubiquitous B-Tree. \emph{ACM Computing Surveys}, 11(2):121--137, 1979.
+
+\bibitem{knuth} D. E. Knuth. \emph{The Art of Computer Programming, Vol. 3: Sorting and Searching}, 2nd ed.
+  Addison-Wesley, 1998.
+
+\bibitem{avl} G. M. Adelson-Velsky, E. M. Landis. An algorithm for the organization of information.
+  \emph{Soviet Mathematics Doklady}, 3:1259--1263, 1962.
+
+\bibitem{yao} A. C.-C. Yao. On random 2--3 trees. \emph{Acta Informatica}, 9(2):159--170, 1978.
+
+\bibitem{sedgewick} R. Sedgewick, K. Wayne. \emph{Algorithms}, 4th ed. Addison-Wesley, 2011.
+
+\bibitem{xorshift} G. Marsaglia. Xorshift RNGs. \emph{Journal of Statistical Software}, 8(14):1--6, 2003.
+
+\end{thebibliography}
+\endgroup
