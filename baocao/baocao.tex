@@ -1,6 +1,6 @@
 % =============================================================================
 % Bao cao De tai 9 - Quan ly kho hang sieu thi
-% Bien dich: cd baocao && latexmk -xelatex baocao.tex    (can XeLaTeX, TeX Live)
+% Bien dich: latexmk -xelatex baocao.tex  (khuyen dung XeLaTeX; pdfLaTeX van chay duoc)
 % Bieu do va bang thuc nghiem doc truc tiep tu ../ketqua/ketqua_btree.csv
 % =============================================================================
 \documentclass[12pt,a4paper,oneside]{report}
@@ -19,12 +19,30 @@
 % ---------------------------------------------------------------------------
 
 \usepackage[a4paper,left=3cm,right=2cm,top=2.5cm,bottom=2.5cm]{geometry}
-\usepackage{fontspec}
-\setmainfont{TeX Gyre Termes}
-\setsansfont{TeX Gyre Heros}
-\setmonofont{DejaVu Sans Mono}[Scale=0.82]
-\usepackage{polyglossia}
-\setdefaultlanguage{vietnamese}
+% Font: nen dung XeLaTeX (Overleaf: Menu > Compiler > XeLaTeX). Font duoc goi theo TEN TEP
+% (co san trong TeX Live) nen khong phu thuoc font cai tren may. Neu lo bien dich bang
+% pdfLaTeX thi tu chuyen sang bang ma tieng Viet T5 (font Times tuong tu).
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T5]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{mathptmx}
+  \usepackage[scaled=0.92]{helvet}
+  \renewcommand{\ttdefault}{lmtt}   % hep hon Courier, co bang ma T5
+  \usepackage[vietnamese]{babel}
+  \newcommand{\cochumanhinh}{\fontsize{7}{8.4}\selectfont}
+\else
+  \usepackage{fontspec}
+  \setmainfont{texgyretermes}[Extension=.otf,UprightFont=*-regular,BoldFont=*-bold,
+    ItalicFont=*-italic,BoldItalicFont=*-bolditalic]
+  \setsansfont{texgyreheros}[Extension=.otf,UprightFont=*-regular,BoldFont=*-bold,
+    ItalicFont=*-italic,BoldItalicFont=*-bolditalic]
+  \setmonofont{DejaVuSansMono}[Extension=.ttf,UprightFont=*,BoldFont=*-Bold,
+    ItalicFont=*-Oblique,BoldItalicFont=*-BoldOblique,Scale=0.82]
+  \usepackage{polyglossia}
+  \setdefaultlanguage{vietnamese}
+  \newcommand{\cochumanhinh}{\scriptsize}
+\fi
 \usepackage{amsmath,amssymb}
 \usepackage{setspace}
 \setstretch{1.15}
@@ -103,7 +121,7 @@
 % Khong dung breakable / \color trong fonttitle: voi XeTeX mau chu co the lan ra ngoai hop.
 \newtcblisting{manhinh}[1][]{listing only,colback=black!88,colframe=black!60,
   colupper=green!85!white,coltitle=white,arc=2pt,boxrule=0.6pt,left=4pt,right=4pt,top=3pt,bottom=3pt,
-  listing options={basicstyle=\ttfamily\scriptsize,columns=fixed,
+  listing options={basicstyle=\ttfamily\cochumanhinh,columns=fixed,
   keepspaces=true,breaklines=false,frame=none,backgroundcolor={},language={}},
   title={\ttfamily\scriptsize #1},colbacktitle=black!65}
 
