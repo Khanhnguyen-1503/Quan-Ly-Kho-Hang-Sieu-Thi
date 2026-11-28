@@ -1,0 +1,262 @@
+% =============================================================================
+\chapter{Phân tích thiết kế}\label{chap:thietke}
+% =============================================================================
+
+\section{Mô hình dữ liệu}
+
+Phân tích bài toán cho bốn thực thể chính:
+
+\begin{itemize}
+  \item \textbf{Mặt hàng} (\code{MatHang}): mã vạch (khóa), tên, nhóm, đơn giá bán, ngưỡng cảnh báo,
+        tồn kho và danh sách các lô còn hàng.
+  \item \textbf{Lô} (\code{Lo}): một lần nhập của một mặt hàng -- mã lô, ngày nhập, \emph{hạn sử dụng},
+        số lượng \emph{còn lại}, giá nhập. HSD gắn với lô chứ không gắn với mặt hàng, vì mỗi lần nhập có HSD khác nhau.
+  \item \textbf{Phiếu} (\code{Phieu}): một giao dịch nhập hoặc xuất -- mã phiếu, loại, ngày, mã vạch,
+        số lượng, đơn giá tại thời điểm giao dịch. Phiếu là lịch sử, không bị xóa khi mặt hàng bị xóa.
+  \item \textbf{Kho} (\code{Kho}): gồm chỉ mục mặt hàng (B-Tree), danh sách phiếu và bộ đếm cấp mã lô.
+\end{itemize}
+
+Hai quyết định thiết kế quan trọng được cả nhóm thống nhất từ đầu:
+
+\begin{enumerate}
+  \item \textbf{Tồn kho là dữ liệu dẫn xuất.} \code{tonKho} luôn bằng tổng \code{soLuong} các lô và
+        \emph{không ghi ra tệp}; khi đọc tệp, chương trình cộng số lượng các lô để tính lại. Nhờ vậy tồn kho không
+        bao giờ lệch với các lô.
+  \item \textbf{Quyền sở hữu bộ nhớ rõ ràng.} B-Tree chỉ giữ con trỏ \code{MatHang*}; \code{btRemove} gỡ mặt hàng
+        khỏi cây và trả con trỏ về, còn mô-đun \code{Inventory} là nơi duy nhất \code{delete} mặt hàng cùng các lô.
+        Quy ước này tránh giải phóng hai lần.
+\end{enumerate}
+
+Mã nguồn~\ref{lst:types} trích các kiểu dữ liệu chính trong \code{Types.h}.
+
+\begin{lstlisting}[float=tbp,caption={Các kiểu dữ liệu chính trong \code{Types.h} (trích)},label=lst:types]
+struct Date { int d; int m; int y; };
+
+struct Lo {                       // mot lan nhap cua mot mat hang
+    int maLo;  Date ngayNhap;  Date hsd;   // HSD gan voi tung lo
+    int soLuong;                  // con lai trong lo
+    double giaNhap;  Lo* next;
+};
+struct LotQueue { Lo* front; Lo* rear; int count; };   // front = lo cu nhat
+
+struct MatHang {
+    std::string maVach;           // 8 hoac 13 chu so, khoa B-Tree
+    std::string ten, nhom;  double donGia;
+    int tonKho;                   // = tong soLuong cac lo
+    int nguongCanhBao;  LotQueue dsLo;  int demTam;   // demTam: bien tam cho bao cao
+};
+
+struct BTreeNode {
+    int n; bool leaf;
+    MatHang** keys;               // toi da m-1 khoa (+1 o de tach)
+    BTreeNode** child;            // toi da m con (+1)
+};
+struct BTree { BTreeNode* root; int m; int size;
+               long long soNutTruyXuat; bool inKhiTachGop; };
+\end{lstlisting}
+
+\section{Lựa chọn cấu trúc dữ liệu}
+
+\subsection{Chỉ mục mặt hàng: B-Tree so với AVL, bảng băm và mảng sắp xếp}
+
+Thao tác thường xuyên nhất là tìm mặt hàng theo mã vạch (mỗi lần nhập, xuất, sửa, báo cáo top bán chạy).
+Ngoài ra cần chèn, xóa và duyệt toàn bộ theo thứ tự mã vạch (để ghi tệp và lập báo cáo).
+Bảng~\ref{tab:sosanhchimuc} so sánh các phương án với $n$ mặt hàng.
+
+\begin{table}[htbp]
+\centering\small
+\caption{So sánh các cấu trúc làm chỉ mục mặt hàng ($n$ khóa)}
+\label{tab:sosanhchimuc}
+\begin{tabularx}{\linewidth}{@{}l c c c Y@{}}
+\toprule
+\textbf{Cấu trúc} & \textbf{Tìm} & \textbf{Chèn / xóa} & \textbf{Duyệt có thứ tự} & \textbf{Nhận xét} \\
+\midrule
+Mảng sắp xếp & $O(\log n)$ & $O(n)$ & $O(n)$ & Dời phần tử khi chèn/xóa, chậm khi kho thay đổi nhiều \\
+Bảng băm & $O(1)$ TB & $O(1)$ TB & $O(n\log n)$ & Không có thứ tự; phải sắp lại khi ghi tệp/báo cáo; xấu nhất $O(n)$ \\
+Cây AVL & $O(\log_2 n)$ & $O(\log_2 n)$ & $O(n)$ & Mỗi nút 1 khóa, cao $\approx 1{,}44\log_2 n$ trong trường hợp xấu \\
+\textbf{B-Tree bậc $m$} & $O(\log_{\lceil m/2\rceil} n)$ nút & $O(m\log_{\lceil m/2\rceil} n)$ & $O(n)$ & Mỗi nút tới $m-1$ khóa, cây thấp, ít nút phải truy xuất \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{So sánh trực tiếp B-Tree với AVL.} Cả hai đều là cây tìm kiếm cân bằng với chi phí $O(\log n)$,
+nhưng khác nhau ở \emph{số nút phải đi qua}. Với $n = 10^5$:
+\begin{itemize}
+  \item AVL có chiều cao ít nhất $\lceil\log_2(n+1)\rceil = 17$ và nhiều nhất
+        $1{,}44\log_2(n+2) - 0{,}33 \approx 23{,}6$ mức~\cite{avl,knuth}; mỗi lần tìm đi qua trung bình xấp xỉ
+        $\log_2 n \approx 16{,}6$ nút.
+  \item B-Tree bậc $m = 10$ có chiều cao không quá $1 + \log_5\frac{n+1}{2} \approx 7{,}7$; thực nghiệm ở
+        Chương~\ref{chap:thucnghiem} đo được chiều cao 6 và trung bình \textbf{5,84 nút} mỗi lần tìm.
+\end{itemize}
+Đổi lại, mỗi nút B-Tree chứa nhiều khóa nên phải tìm nhị phân trong nút ($O(\log m)$ phép so sánh), và
+thao tác chèn/xóa phức tạp hơn (tách, mượn, gộp nút thay vì xoay cây). Khi toàn bộ dữ liệu nằm trong bộ nhớ,
+hai cấu trúc có tốc độ cùng bậc; ưu điểm thật sự của B-Tree xuất hiện khi mỗi lần truy xuất nút là một lần đọc
+khối đĩa -- trường hợp của kho dữ liệu thực tế với hàng triệu mặt hàng~\cite{bayer,comer}. B-Tree cũng có lợi
+về bộ nhớ đệm (cache) vì các khóa trong một nút nằm liền nhau. Đây là lý do đề tài chọn B-Tree, đồng thời
+cho phép thực nghiệm ảnh hưởng của bậc $m$.
+
+\subsection{Danh sách lô của mặt hàng: hàng đợi DSLK so với mảng vòng}
+
+Các lô của một mặt hàng được xử lý đúng theo thứ tự FIFO: nhập kho thêm lô vào \emph{cuối}, xuất kho lấy từ
+\emph{đầu}. Đây chính là hàng đợi. Hai cách cài đặt được cân nhắc:
+
+\begin{table}[htbp]
+\centering\small
+\caption{So sánh cách cài đặt hàng đợi lô}
+\label{tab:sosanhhangdoi}
+\begin{tabularx}{\linewidth}{@{}l Y Y@{}}
+\toprule
+& \textbf{DSLK đơn có \code{front}, \code{rear}} (được chọn) & \textbf{Mảng vòng} \\
+\midrule
+Thêm cuối / lấy đầu & $O(1)$ & $O(1)$, nhưng $O(k)$ khi đầy phải cấp phát lại và chép \\
+Số lô tối đa & Không giới hạn & Cố định theo dung lượng hoặc phải mở rộng \\
+Bộ nhớ & Mỗi lô thêm 1 con trỏ \code{next} & Liền khối, có ô trống dự phòng \\
+Duyệt các lô (báo cáo HSD) & $O(k)$ & $O(k)$, thân thiện cache hơn \\
+Hàng nghìn mặt hàng ít lô & Chỉ cấp phát đúng số lô thật & Mỗi mặt hàng giữ một mảng dự phòng \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Số lô mỗi mặt hàng thay đổi liên tục và thường nhỏ, trong khi số mặt hàng lớn. DSLK không lãng phí bộ nhớ dự
+phòng cho từng mặt hàng, không cần cấp phát lại, và việc gỡ lô đã xuất hết chỉ là dời con trỏ \code{front}.
+
+\subsection{Các cấu trúc phụ}
+
+\begin{itemize}
+  \item \textbf{Danh sách phiếu}: DSLK đơn có con trỏ \code{tail} để thêm phiếu mới vào cuối trong $O(1)$;
+        phiếu được duyệt tuần tự khi in danh sách, lọc theo ngày và tính top bán chạy.
+  \item \textbf{Mảng động \code{DsMatHang}} (thay \code{std::vector}): dùng cho kết quả tìm kiếm và báo cáo, vì
+        Merge Sort cần truy cập ngẫu nhiên. Mảng gấp đôi dung lượng khi đầy nên thêm phần tử có chi phí khấu
+        trừ $O(1)$.
+  \item \textbf{Merge Sort} (thay \code{std::sort}): được chọn thay vì Quick Sort vì \emph{ổn định} -- cần cho
+        sắp xếp nhiều tiêu chí như ``theo nhóm, cùng nhóm thì theo tên'' -- và luôn $O(n\log n)$, không có trường hợp
+        xấu $O(n^2)$. Đổi lại cần $O(n)$ bộ nhớ phụ.
+\end{itemize}
+
+\section{Sơ đồ mô-đun}
+
+Chương trình gồm 12 mô-đun (Hình~\ref{fig:modun}). Mũi tên $A \to B$ nghĩa là $A$ gọi hàm của $B$.
+Các mô-đun đều dùng kiểu dữ liệu trong \code{Types.h} và hàm ngày trong \code{Date}.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+  mod/.style={draw,rounded corners=2pt,minimum width=2.25cm,minimum height=0.95cm,align=center,font=\small},
+  dep/.style={-{Stealth[length=2mm]},thick,black!60}]
+  \node[mod,fill=cTin,minimum width=3cm] (main) at (6.5,0) {\textbf{main.cpp}\\[-2pt]{\scriptsize menu}};
+  \node[mod,fill=cTin]    (val) at (0,-2.2)    {\textbf{Validate}\\[-2pt]{\scriptsize kiểm tra nhập}};
+  \node[mod,fill=cTin]    (fio) at (2.6,-2.2)  {\textbf{FileIO}\\[-2pt]{\scriptsize đọc/ghi tệp}};
+  \node[mod,fill=cTan]    (inv) at (5.2,-2.2)  {\textbf{Inventory}\\[-2pt]{\scriptsize nhập/xuất kho}};
+  \node[mod,fill=cVu]     (rep) at (7.8,-2.2)  {\textbf{Report}\\[-2pt]{\scriptsize tìm, báo cáo}};
+  \node[mod,fill=cTin]    (gen) at (10.4,-2.2) {\textbf{DataGen}\\[-2pt]{\scriptsize sinh dữ liệu}};
+  \node[mod,fill=cNguyen] (ben) at (13,-2.2)   {\textbf{Benchmark}\\[-2pt]{\scriptsize thực nghiệm}};
+  \node[mod,fill=cTan]    (lq)  at (3.4,-4.4)  {\textbf{LotQueue}\\[-2pt]{\scriptsize hàng đợi lô}};
+  \node[mod,fill=cTan]    (ph)  at (6,-4.4)    {\textbf{Phieu}\\[-2pt]{\scriptsize DS phiếu}};
+  \node[mod,fill=cNguyen] (bt)  at (8.6,-4.4)  {\textbf{BTree}\\[-2pt]{\scriptsize chỉ mục mã vạch}};
+  \node[mod,fill=cVu]     (so)  at (11.2,-4.4) {\textbf{Sort}\\[-2pt]{\scriptsize Merge Sort}};
+  \node[mod,fill=cChung,minimum width=7cm] (ty) at (3.8,-6.2) {\textbf{Types.h}\\[-2pt]{\scriptsize struct dùng chung}};
+  \node[mod,fill=cTin,minimum width=7cm]   (da) at (11.2,-6.2) {\textbf{Date}\\[-2pt]{\scriptsize ngày: kiểm tra, cộng/trừ, so sánh}};
+  \foreach \t in {val,fio,inv,rep,gen,ben} \draw[dep] (main.south) -- (\t.north);
+  \draw[dep] (fio) -- (val);
+  \draw[dep] (fio) -- (inv);
+  \draw[dep] (rep) -- (inv);
+  \draw[dep] (inv.south) -- (lq.north);
+  \draw[dep] (inv.south) -- (ph.north);
+  \draw[dep] (inv.south) -- (bt.north);
+  \draw[dep] (rep.south) -- (bt.north);
+  \draw[dep] (rep.south) -- (so.north);
+  \draw[dep] (ben.south) -- (bt.north);
+  \draw[dashed,thick,black!45] (-1.3,-5.4) -- (14.4,-5.4);
+  \node[font=\scriptsize\itshape,anchor=south west] at (-1.3,-5.4) {mọi mô-đun phía trên dùng};
+  % chu thich mau
+  \node[font=\scriptsize,anchor=west] at (-1.2,-7.4) {Phụ trách:};
+  \node[draw,fill=cNguyen,minimum size=3mm] at (0.6,-7.4) {}; \node[font=\scriptsize,anchor=west] at (0.8,-7.4) {\TVa};
+  \node[draw,fill=cTan,minimum size=3mm] at (3.2,-7.4) {};    \node[font=\scriptsize,anchor=west] at (3.4,-7.4) {\TVb};
+  \node[draw,fill=cVu,minimum size=3mm] at (5.6,-7.4) {};     \node[font=\scriptsize,anchor=west] at (5.8,-7.4) {\TVc};
+  \node[draw,fill=cTin,minimum size=3mm] at (7.9,-7.4) {};    \node[font=\scriptsize,anchor=west] at (8.1,-7.4) {\TVd};
+  \node[draw,fill=cChung,minimum size=3mm] at (10.3,-7.4) {}; \node[font=\scriptsize,anchor=west] at (10.5,-7.4) {Cả nhóm};
+\end{tikzpicture}}
+\caption{Sơ đồ mô-đun và quan hệ gọi hàm}
+\label{fig:modun}
+\end{figure}
+
+\section{Tổ chức dữ liệu trong bộ nhớ}
+
+Hình~\ref{fig:bonho} minh họa trạng thái bộ nhớ khi kho chứa mặt hàng \code{8930000000002} (Mì gói Loại 2) với
+hai lô còn hàng. Khóa trong nút B-Tree là con trỏ tới bản ghi \code{MatHang}; bản ghi giữ hàng đợi lô với
+\code{front} là lô cũ nhất. Danh sách phiếu độc lập với cây và chỉ tham chiếu mặt hàng qua mã vạch.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+  bnode/.style={rectangle split,rectangle split horizontal,rectangle split parts=3,draw,font=\scriptsize\ttfamily,
+                inner sep=2.5pt,fill=cNguyen},
+  rec/.style={draw,align=left,font=\scriptsize\ttfamily,fill=cTan,inner sep=4pt},
+  lo/.style={rectangle split,rectangle split horizontal,rectangle split parts=4,draw,font=\scriptsize\ttfamily,
+             fill=cTan!60,inner sep=2.5pt},
+  ph/.style={rectangle split,rectangle split horizontal,rectangle split parts=2,draw,font=\scriptsize\ttfamily,
+             fill=cTan!30,inner sep=2.5pt},
+  ptr/.style={-{Stealth[length=2mm]},thick}]
+  \node[bnode] (r) at (0,0) {\nodepart{one}...009\nodepart{two}...018\nodepart{three}...027};
+  \node[bnode] (c1) at (-2.4,-1.4) {\nodepart{one}...003\nodepart{two}...006\nodepart{three}\phantom{000}};
+  \node[bnode] (l1) at (-4.6,-2.8) {\nodepart{one}...001\nodepart{two}...002\nodepart{three}\phantom{000}};
+  \draw[ptr] ($(r.south west)!0.1!(r.south east)$) -- (c1.north);
+  \draw[ptr] ($(c1.south west)!0.1!(c1.south east)$) -- (l1.north);
+  \node[font=\scriptsize\itshape,anchor=west] at (1.9,0) {B-Tree $m=5$ (35 khóa, cao 3)};
+  \node[rec] (mh) at (-1.2,-4.6) {MatHang\\maVach = 8930000000002\\ten = "Mi goi Loai 2"\\tonKho = 64 \ \ (= 25 + 39)\\dsLo: front, rear, count = 2};
+  \draw[ptr] (l1.two south) to[out=-90,in=180] (mh.west);
+  \node[lo] (lo4) at (4.2,-4.1) {\nodepart{one}LO4\nodepart{two}09/11/2026\nodepart{three}HSD 15/04/2027\nodepart{four}25};
+  \node[lo] (lo5) at (4.2,-5.2) {\nodepart{one}LO5\nodepart{two}16/11/2026\nodepart{three}HSD 18/04/2027\nodepart{four}39};
+  \node[font=\scriptsize,anchor=west] (nul) at (7.0,-5.2) {nullptr};
+  \draw[ptr] (mh.east |- lo4.west) -- node[above,font=\scriptsize]{front} (lo4.west);
+  \draw[ptr] (mh.east |- lo5.west) -- node[below,font=\scriptsize]{rear} (lo5.west);
+  \draw[ptr] ([xshift=6mm]lo4.south west) -- node[right,font=\scriptsize]{next} ([xshift=6mm]lo5.north west);
+  \draw[ptr] (lo5.east) -- (nul.west);
+  \node[font=\scriptsize\itshape] at (4.2,-3.5) {hàng đợi lô (cũ $\to$ mới)};
+  % danh sach phieu
+  \node[ph] (p1) at (-3.6,-7) {\nodepart{one}PN00001\nodepart{two}...001};
+  \node[ph] (p2) at (-1.2,-7) {\nodepart{one}PN00002\nodepart{two}...001};
+  \node[font=\small] (pd) at (0.6,-7) {$\cdots$};
+  \node[ph] (p3) at (2.4,-7) {\nodepart{one}PX00099\nodepart{two}...035};
+  \node[font=\scriptsize] (n2) at (4.4,-7) {nullptr};
+  \draw[ptr] (p1) -- (p2); \draw[ptr] (p2) -- (pd); \draw[ptr] (pd) -- (p3); \draw[ptr] (p3) -- (n2);
+  \node[font=\scriptsize] (hd) at (-3.6,-8) {head};  \draw[ptr] (hd) -- (p1);
+  \node[font=\scriptsize] (tl) at (2.4,-8) {tail};   \draw[ptr] (tl) -- (p3);
+  \node[font=\scriptsize\itshape,anchor=west] at (5.4,-7) {DanhSachPhieu (99 phiếu)};
+\end{tikzpicture}}
+\caption{Tổ chức dữ liệu trong bộ nhớ: B-Tree, bản ghi mặt hàng, hàng đợi lô và danh sách phiếu}
+\label{fig:bonho}
+\end{figure}
+
+\section{Định dạng tệp và mã kết quả}
+
+Dữ liệu lưu trong ba tệp văn bản, mỗi dòng một bản ghi, các trường phân cách bằng ký tự \code{|}, ngày dạng
+\code{dd/mm/yyyy} (Bảng~\ref{tab:tep}). Trong tệp, mã lô và mã phiếu có tiền tố cho dễ đọc; trong chương trình
+chúng là số nguyên: \code{LO00001}~$\leftrightarrow$~1, \code{PN00006} (phiếu nhập) và \code{PX00006}
+(phiếu xuất)~$\leftrightarrow$~6. Phiếu nhập và xuất dùng chung một dãy số, nên không có hai phiếu cùng số.
+Quy đổi chỉ được định nghĩa ở một nơi (\code{tachMaLo}, \code{taoMaLo}, \code{tachMaPhieu}, \code{taoMaPhieu}
+trong \code{FileIO}).
+
+\begin{table}[htbp]
+\centering\small
+\caption{Định dạng ba tệp dữ liệu}
+\label{tab:tep}
+\begin{tabularx}{\linewidth}{@{}l Y@{}}
+\toprule
+\textbf{Tệp} & \textbf{Định dạng dòng và ví dụ} \\
+\midrule
+\code{mathang.txt} & \code{maVach|ten|nhom|donGia|nguongCanhBao} \\
+ & \code{8930000000002|Mi goi Loai 2|Thuc pham kho|110000|10} \\
+\code{lo.txt} & \code{maVach|maLo|ngayNhap|hsd|soLuong|giaNhap} \quad (số lượng \emph{còn lại}, theo thứ tự FIFO) \\
+ & \code{8930000000002|LO00004|09/11/2026|15/04/2027|25|82500} \\
+\code{phieu.txt} & \code{maPhieu|loai|ngay|maVach|soLuong|donGia} \\
+ & \code{PX00006|XUAT|16/11/2026|8930000000002|51|110000} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Các hàm nghiệp vụ trả về một giá trị \code{enum KetQua} thay vì in thông báo trực tiếp, để menu quyết định cách
+hiển thị và để kiểm thử tự động được: \code{KQ\_OK}, \code{KQ\_TRUNG\_MA}, \code{KQ\_KHONG\_TIM\_THAY},
+\code{KQ\_KHONG\_DU\_HANG}, \code{KQ\_DU\_LIEU\_SAI}, \code{KQ\_CON\_TON\_KHO}, \code{KQ\_LOI\_TEP}.

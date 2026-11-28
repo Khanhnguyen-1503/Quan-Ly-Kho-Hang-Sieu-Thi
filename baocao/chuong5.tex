@@ -1,0 +1,182 @@
+% =============================================================================
+\chapter{Thực nghiệm}\label{chap:thucnghiem}
+% =============================================================================
+
+\section{Mục tiêu và thiết lập}
+
+Thực nghiệm trả lời câu hỏi của phần nâng cao: \emph{bậc $m$ ảnh hưởng thế nào tới số nút phải truy xuất khi tìm
+kiếm, chiều cao cây và thời gian chạy}, với số mặt hàng tăng tới $10^5$.
+
+\begin{itemize}
+  \item \textbf{Dữ liệu:} $n \in \{10^3,\ 5\cdot10^3,\ 10^4,\ 2\cdot10^4,\ 5\cdot10^4,\ 10^5\}$ mã vạch 13 chữ số khác
+        nhau; $m \in \{3, 5, 10\}$.
+  \item \textbf{Cách đo} (hàm \code{doBTree}): xáo trộn thứ tự rồi chèn cả $n$ mặt hàng; xáo trộn lại rồi tìm lại
+        cả $n$ mã. Thời gian đo bằng \code{std::chrono::steady\_clock}; số nút truy xuất trung bình
+        $= \mathit{soNutTruyXuat} / n$ trong pha tìm. Bộ sinh số ngẫu nhiên xorshift32~\cite{xorshift} tự cài, hạt
+        giống cố định, nên kết quả lặp lại được trên mọi máy.
+  \item \textbf{Lặp lại:} mỗi cấu hình chạy 3 lần với 3 hạt giống khác nhau, lấy trung bình.
+  \item \textbf{Máy chạy:} Intel Xeon 2,10\,GHz (4 nhân ảo, chương trình chạy đơn luồng), Linux, \code{g++} 13.3,
+        \code{-O2}. Lệnh: \code{make bench}; kết quả ghi vào \code{ketqua/ketqua\_btree.csv}.
+\end{itemize}
+
+\section{Kết quả}
+
+\pgfplotstableread[col sep=comma]{\CSV}\bangKQ
+
+\begin{table}[htbp]
+\centering\small
+\caption{Kết quả thực nghiệm B-Tree (trung bình 3 lần chạy)}
+\label{tab:thucnghiem}
+\pgfplotstabletypeset[
+  columns={n,m,chieuCao,soNut,tbNutTruyXuat,tgChenMs,tgTimMs},
+  columns/n/.style={column name={$n$},int detect,1000 sep={\,}},
+  columns/m/.style={column name={$m$},int detect},
+  columns/chieuCao/.style={column name={Chiều cao},int detect},
+  columns/soNut/.style={column name={Số nút},int detect,1000 sep={\,}},
+  columns/tbNutTruyXuat/.style={column name={Nút truy xuất TB},fixed,fixed zerofill,precision=2,use comma},
+  columns/tgChenMs/.style={column name={Chèn $n$ khóa (ms)},fixed,fixed zerofill,precision=2,use comma},
+  columns/tgTimMs/.style={column name={Tìm $n$ khóa (ms)},fixed,fixed zerofill,precision=2,use comma},
+  every head row/.style={before row=\toprule,after row=\midrule},
+  every last row/.style={after row=\bottomrule},
+  every nth row={3}{before row=\midrule},
+]\bangKQ
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=0.66\linewidth,height=7cm,xmode=log,log basis x=10,
+  xlabel={Số mặt hàng $n$},ylabel={Số nút truy xuất trung bình mỗi lần tìm},
+  ymin=0,ymax=17,grid=major,grid style={black!12},legend pos=outer north east,legend cell align=left,
+  legend style={font=\footnotesize,align=left},tick label style={font=\footnotesize},
+  /pgf/number format/use comma]
+  \addplot[thick,blue!70!black,mark=*] table[x=n,y=tbNutTruyXuat,col sep=comma,discard if not={m}{3}]{\CSV};
+  \addlegendentry{$m = 3$ (đo)}
+  \addplot[thick,orange!85!black,mark=square*] table[x=n,y=tbNutTruyXuat,col sep=comma,discard if not={m}{5}]{\CSV};
+  \addlegendentry{$m = 5$ (đo)}
+  \addplot[thick,green!50!black,mark=triangle*] table[x=n,y=tbNutTruyXuat,col sep=comma,discard if not={m}{10}]{\CSV};
+  \addlegendentry{$m = 10$ (đo)}
+  \pgfplotsinvokeforeach{2,3,5}{%
+    \addplot[dashed,black!45,forget plot,samples at={1000,1500,2000,3000,5000,7000,10000,15000,20000,30000,50000,70000,100000}]
+      {1+ln((x+1)/2)/ln(#1)};}
+  \addlegendimage{dashed,black!45}\addlegendentry{cận trên chiều cao\\$1+\log_t\frac{n+1}{2}$}
+  \node[font=\scriptsize,black!55,anchor=west] at (axis cs:100000,16.6) {$t{=}2$};
+  \node[font=\scriptsize,black!55,anchor=west] at (axis cs:100000,10.85) {$t{=}3$};
+  \node[font=\scriptsize,black!55,anchor=west] at (axis cs:100000,7.7) {$t{=}5$};
+\end{axis}
+\end{tikzpicture}
+\caption{Số nút truy xuất trung bình mỗi lần tìm theo $n$ và $m$; nét đứt là cận trên lý thuyết của chiều cao}
+\label{fig:nuttruyxuat}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[b]{0.49\linewidth}\centering
+\begin{tikzpicture}
+\begin{axis}[width=\linewidth,height=6cm,xmode=log,ymode=log,xlabel={$n$},ylabel={Thời gian (ms)},
+  grid=major,grid style={black!12},legend pos=north west,legend style={font=\scriptsize},
+  tick label style={font=\scriptsize},label style={font=\footnotesize}]
+  \addplot[thick,blue!70!black,mark=*] table[x=n,y=tgChenMs,col sep=comma,discard if not={m}{3}]{\CSV}; \addlegendentry{$m=3$}
+  \addplot[thick,orange!85!black,mark=square*] table[x=n,y=tgChenMs,col sep=comma,discard if not={m}{5}]{\CSV}; \addlegendentry{$m=5$}
+  \addplot[thick,green!50!black,mark=triangle*] table[x=n,y=tgChenMs,col sep=comma,discard if not={m}{10}]{\CSV}; \addlegendentry{$m=10$}
+\end{axis}
+\end{tikzpicture}
+\caption{Tổng thời gian chèn $n$ khóa}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.49\linewidth}\centering
+\begin{tikzpicture}
+\begin{axis}[width=\linewidth,height=6cm,xmode=log,ymode=log,xlabel={$n$},ylabel={Thời gian (ms)},
+  grid=major,grid style={black!12},legend pos=north west,legend style={font=\scriptsize},
+  tick label style={font=\scriptsize},label style={font=\footnotesize}]
+  \addplot[thick,blue!70!black,mark=*] table[x=n,y=tgTimMs,col sep=comma,discard if not={m}{3}]{\CSV}; \addlegendentry{$m=3$}
+  \addplot[thick,orange!85!black,mark=square*] table[x=n,y=tgTimMs,col sep=comma,discard if not={m}{5}]{\CSV}; \addlegendentry{$m=5$}
+  \addplot[thick,green!50!black,mark=triangle*] table[x=n,y=tgTimMs,col sep=comma,discard if not={m}{10}]{\CSV}; \addlegendentry{$m=10$}
+\end{axis}
+\end{tikzpicture}
+\caption{Tổng thời gian tìm $n$ khóa}
+\end{subfigure}
+\caption{Thời gian chèn và tìm theo $n$ (trục log--log)}
+\label{fig:thoigian}
+\end{figure}
+
+\section{Phân tích}
+
+\paragraph{Số nút truy xuất giảm mạnh khi tăng $m$.} Với $n = 10^5$, mỗi lần tìm đi qua trung bình
+13,25 nút khi $m = 3$, 8,63 nút khi $m = 5$ và chỉ 5,84 nút khi $m = 10$ -- giảm khoảng \textbf{2,3 lần} từ
+$m = 3$ lên $m = 10$ (Hình~\ref{fig:nuttruyxuat}). Đường biểu diễn gần như thẳng trên trục $n$ dạng log, đúng với
+$O(\log_t n)$: nhân $n$ lên 10 lần chỉ làm tăng thêm khoảng $\log_t 10$ nút ($\approx 3{,}3$ với $m=3$;
+$\approx 1{,}4$ với $m = 10$). Cây nhị phân cân bằng (như AVL) với $n = 10^5$ cần trung bình xấp xỉ
+$\log_2 n \approx 16{,}6$ nút mỗi lần tìm~\cite{knuth}, nhiều hơn B-Tree bậc 10 khoảng 2,8 lần.
+
+\paragraph{Số nút trung bình luôn nhỏ hơn chiều cao.} Lần tìm kết thúc ngay khi gặp khóa, kể cả ở nút trong,
+nên chỉ những khóa nằm ở lá mới cần đi hết $h$ nút. Với $n = 10^5$, tỉ lệ khóa nằm ở nút trong là 42,9\,\%
+($m=3$), 27,1\,\% ($m=5$) và 14,1\,\% ($m=10$). Nhóm kiểm tra lại bằng cách đếm độ sâu từng khóa trong cây: độ sâu
+trung bình bằng đúng 13,25; 8,63 và 5,84 -- trùng với số nút truy xuất đo được.
+
+\paragraph{Chiều cao nằm đúng trong cận lý thuyết.} Với B-Tree $n$ khóa, chiều cao $h$ thỏa
+$\lceil\log_m(n+1)\rceil \le h \le 1 + \log_t\frac{n+1}{2}$~\cite{clrs}. Bảng~\ref{tab:canchieucao} cho thấy mọi
+chiều cao đo được nằm trong khoảng này và gần cận dưới hơn: cây thực tế thấp hơn trường hợp xấu nhất vì các nút
+không chỉ chứa số khóa tối thiểu.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Chiều cao đo được so với cận lý thuyết và tỉ lệ lấp đầy nút}
+\label{tab:canchieucao}
+\begin{tabular}{@{}r c c c c c@{}}
+\toprule
+$n$ & $m$ & Cận dưới $\lceil\log_m(n+1)\rceil$ & \textbf{Chiều cao đo} & Cận trên $\lfloor 1+\log_t\frac{n+1}{2}\rfloor$ & Lấp đầy nút \\
+\midrule
+1\,000 & 3 & 7 & \textbf{8} & 9 & 68,1\,\% \\
+1\,000 & 5 & 5 & \textbf{6} & 6 & 68,5\,\% \\
+1\,000 & 10 & 4 & \textbf{4} & 4 & 67,8\,\% \\
+\midrule
+10\,000 & 3 & 9 & \textbf{11} & 13 & 67,1\,\% \\
+10\,000 & 5 & 6 & \textbf{7} & 8 & 67,7\,\% \\
+10\,000 & 10 & 5 & \textbf{5} & 6 & 68,0\,\% \\
+\midrule
+100\,000 & 3 & 11 & \textbf{14} & 16 & 67,0\,\% \\
+100\,000 & 5 & 8 & \textbf{9} & 10 & 67,7\,\% \\
+100\,000 & 10 & 6 & \textbf{6} & 7 & 67,9\,\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Tỉ lệ lấp đầy khoảng 68\,\%.} Tỉ lệ lấp đầy $= n / (\text{số nút}\times(m-1))$ ổn định quanh 67--68\,\%
+với mọi $m$ và $n$, gần với giá trị lý thuyết xấp xỉ $\ln 2 \approx 69\,\%$ đã biết cho B-Tree chèn khóa theo thứ
+tự ngẫu nhiên~\cite{yao}. Nhờ vậy số nút tỉ lệ nghịch với $m$: 74\,673 nút ($m=3$) so với 16\,358 nút ($m=10$).
+
+\paragraph{Thời gian giảm ít hơn số nút.} Khi $m$ tăng từ 3 lên 10, thời gian tìm $10^5$ khóa giảm từ khoảng
+108\,ms xuống 62\,ms (khoảng 1,7 lần), ít hơn mức giảm 2,3 lần của số nút (Hình~\ref{fig:thoigian}). Nguyên nhân:
+mỗi nút lớn hơn cần nhiều phép so sánh hơn khi tìm nhị phân trong nút, và tổng số phép so sánh chuỗi của B-Tree
+vẫn là $O(\log_2 n)$ bất kể $m$. Khi dữ liệu nằm hoàn toàn trong bộ nhớ, lợi ích về thời gian đến chủ yếu từ việc
+ít đổi nút hơn (ít truy cập bộ nhớ rải rác). Nếu mỗi nút là một khối trên đĩa, chi phí đọc khối lớn hơn chi phí so
+sánh hàng nghìn lần, và số nút truy xuất mới là thước đo quyết định -- đó là bối cảnh B-Tree được thiết
+kế~\cite{bayer,comer}.
+
+\paragraph{Thời gian tăng gần tuyến tính theo $n$.} Trên đồ thị log--log, đường thời gian chèn và tìm có độ dốc
+xấp xỉ 1 (nhỉnh hơn 1 ở $n$ lớn): tổng chi phí $n$ thao tác là $O(n\log n)$; phần tăng thêm ở $n$ lớn có thể
+còn do dữ liệu vượt kích thước bộ nhớ đệm của CPU. Với $n$ nhỏ (dưới 0,5\,ms) thời gian đo bị ảnh hưởng bởi nhiễu của hệ thống
+nên các điểm $n = 10^3$ chỉ mang tính tham khảo.
+
+\section{Thời gian các chức năng khác}
+
+Ngoài B-Tree, nhóm đo thêm thời gian của các chức năng trên dữ liệu lớn (số liệu lấy từ các bộ kiểm thử,
+biên dịch \code{-O2}):
+
+\begin{table}[htbp]
+\centering\small
+\caption{Thời gian các chức năng trên dữ liệu lớn}
+\label{tab:thoigiankhac}
+\begin{tabularx}{\linewidth}{@{}Y p{5.2cm} r@{}}
+\toprule
+\textbf{Thao tác} & \textbf{Dữ liệu} & \textbf{Thời gian} \\
+\midrule
+Đọc ba tệp (kiểm tra từng dòng, dựng B-Tree, hàng đợi lô) & $10^4$ mặt hàng, $1{,}9\cdot10^4$ lô, $2{,}8\cdot10^4$ phiếu & 56\,ms \\
+Ghi ba tệp & như trên & 38\,ms \\
+Tìm theo tên + cảnh báo tồn + cảnh báo HSD + giá trị nhóm + top 10 & $10^5$ mặt hàng, $10^5$ lô & 131\,ms \\
+Toàn bộ \code{test\_kho} (gồm 20\,000 thao tác ngẫu nhiên, $m = 3$) & 2\,000 mã vạch & 0,03\,s \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Với kho $10^5$ mặt hàng, toàn bộ báo cáo chạy dưới 0,2 giây, đủ nhanh cho thao tác tương tác trên menu.

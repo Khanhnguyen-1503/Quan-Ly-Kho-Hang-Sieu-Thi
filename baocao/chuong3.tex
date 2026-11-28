@@ -1,0 +1,442 @@
+% =============================================================================
+\chapter{Giải thuật}\label{chap:giaithuat}
+% =============================================================================
+
+Ký hiệu dùng trong chương: $n$ -- số mặt hàng; $m$ -- bậc B-Tree; $t = \lceil m/2\rceil$;
+$h$ -- chiều cao cây; $L$ -- tổng số lô; $P$ -- số phiếu; $r$ -- số phần tử kết quả.
+
+% -----------------------------------------------------------------------------
+\section{B-Tree bậc $m$}\label{sec:btree}
+% -----------------------------------------------------------------------------
+
+\subsection{Định nghĩa và cách lưu nút}
+
+B-Tree bậc $m$~\cite{bayer,clrs} là cây tìm kiếm nhiều nhánh thỏa mãn:
+(1) mỗi nút có tối đa $m-1$ khóa và $m$ con; (2) mỗi nút khác gốc có ít nhất $t-1 = \lceil m/2\rceil-1$ khóa;
+gốc có ít nhất 1 khóa; (3) các khóa trong nút tăng dần, và mọi khóa trong cây con thứ $i$ nằm giữa khóa
+$i-1$ và khóa $i$ của nút cha; (4) mọi lá ở cùng một mức.
+
+Mỗi nút cấp phát mảng \code{keys} có $m$ ô và mảng \code{child} có $m+1$ ô -- \emph{dư một ô} so với định nghĩa.
+Ô dư cho phép thuật toán chèn đặt khóa vào nút trước, để nút tạm thời có $m$ khóa (tràn), rồi mới tách. Cách
+``chèn rồi tách ngược lên'' này đúng với mọi $m \ge 3$, kể cả $m$ lẻ như 3 và 5; còn cách tách phòng ngừa
+khi đi xuống trong~\cite{clrs} chỉ áp dụng cho bậc chẵn $m = 2t$.
+
+\subsection{Tìm kiếm}
+
+Trong mỗi nút, vị trí khóa được tìm bằng tìm nhị phân (\textsc{TimViTri} trả về chỉ số $i$ nhỏ nhất có
+$\mathit{keys}[i] \ge k$). Mỗi nút đi qua được cộng vào bộ đếm \code{soNutTruyXuat} -- phục vụ phần nâng cao.
+
+\begin{algorithm}[htbp]
+\caption{Tìm mặt hàng theo mã vạch (\code{btSearch})}\label{alg:tim}
+\begin{algorithmic}[1]
+\Function{Tim}{$T, k$}
+  \State $x \gets T.\mathit{root}$
+  \While{$x \neq \textsc{nil}$}
+    \State $T.\mathit{soNutTruyXuat} \gets T.\mathit{soNutTruyXuat} + 1$
+    \State $i \gets \Call{TimViTri}{x, k}$ \Comment{tìm nhị phân, $O(\log m)$}
+    \If{$i < x.n$ \textbf{và} $x.\mathit{keys}[i].\mathit{maVach} = k$} \State \Return $x.\mathit{keys}[i]$ \EndIf
+    \If{$x.\mathit{leaf}$} \State \Return \textsc{nil} \EndIf
+    \State $x \gets x.\mathit{child}[i]$
+  \EndWhile
+  \State \Return \textsc{nil}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Độ phức tạp:} đi qua tối đa $h$ nút, mỗi nút $O(\log m)$ phép so sánh chuỗi:
+$O(h\log m) = O(\log n)$ phép so sánh và $O(h) = O(\log_t n)$ nút.
+
+\subsection{Chèn và tách nút}
+
+\begin{algorithm}[htbp]
+\caption{Chèn mặt hàng (\code{btInsert}) và tách nút}\label{alg:chen}
+\begin{algorithmic}[1]
+\Function{Chen}{$T, \mathit{mh}$}
+  \If{$T.\mathit{root} = \textsc{nil}$} \State tạo lá gốc chứa $\mathit{mh}$; \Return \textbf{đúng} \EndIf
+  \If{\textbf{không} \Call{ChenDeQuy}{$T, T.\mathit{root}, \mathit{mh}$}} \State \Return \textbf{sai} \Comment{trùng mã} \EndIf
+  \If{$T.\mathit{root}.n = m$} \Comment{gốc tràn: cây cao thêm 1 mức}
+    \State $s \gets$ nút trong mới; $s.\mathit{child}[0] \gets T.\mathit{root}$; $T.\mathit{root} \gets s$
+    \State \Call{TachCon}{$T, s, 0$}
+  \EndIf
+  \State $T.\mathit{size} \gets T.\mathit{size} + 1$; \Return \textbf{đúng}
+\EndFunction
+\Statex
+\Function{ChenDeQuy}{$T, x, \mathit{mh}$}
+  \State $i \gets \Call{TimViTri}{x, \mathit{mh}.\mathit{maVach}}$
+  \If{$i < x.n$ \textbf{và} $x.\mathit{keys}[i].\mathit{maVach} = \mathit{mh}.\mathit{maVach}$} \State \Return \textbf{sai} \EndIf
+  \If{$x.\mathit{leaf}$}
+    \State dời $x.\mathit{keys}[i..x.n-1]$ sang phải 1 ô; $x.\mathit{keys}[i] \gets \mathit{mh}$; $x.n \gets x.n+1$
+    \State \Return \textbf{đúng} \Comment{$x$ có thể đang có $m$ khóa}
+  \EndIf
+  \If{\textbf{không} \Call{ChenDeQuy}{$T, x.\mathit{child}[i], \mathit{mh}$}} \State \Return \textbf{sai} \EndIf
+  \If{$x.\mathit{child}[i].n = m$} \State \Call{TachCon}{$T, x, i$} \EndIf
+  \State \Return \textbf{đúng}
+\EndFunction
+\Statex
+\Procedure{TachCon}{$T, x, i$} \Comment{$y = x.\mathit{child}[i]$ đang có $m$ khóa}
+  \State $y \gets x.\mathit{child}[i]$; $g \gets \lfloor m/2 \rfloor$
+  \State $z \gets$ nút mới, $z.\mathit{leaf} \gets y.\mathit{leaf}$, $z.n \gets m-1-g$
+  \State $z.\mathit{keys} \gets y.\mathit{keys}[g+1..m-1]$; \textbf{nếu} $y$ không là lá: $z.\mathit{child} \gets y.\mathit{child}[g+1..m]$
+  \State $y.n \gets g$
+  \State chèn $y.\mathit{keys}[g]$ vào $x.\mathit{keys}[i]$ và $z$ vào $x.\mathit{child}[i+1]$ (dời phải)
+  \If{$T.\mathit{inKhiTachGop}$} \State in thông báo tách và (sau thao tác) in cả cây \EndIf
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Tính đúng của phép tách.} Nút tràn có $m$ khóa; khóa giữa $\mathit{keys}[g]$ lên cha, nút trái giữ
+$g = \lfloor m/2\rfloor$ khóa, nút phải giữ $m-1-\lfloor m/2\rfloor = \lceil m/2\rceil - 1 = t-1$ khóa. Cả hai
+đều đạt số khóa tối thiểu. Cha nhận thêm một khóa và có thể tràn tiếp; khi đó lời gọi đệ quy ở mức trên tách
+cha, lan dần tới gốc.
+
+\paragraph{Ví dụ chạy tay ($m = 3$).} Mỗi nút có 1--2 khóa. Chèn lần lượt 50, 20, 80, 10, 30, 60, 90, 40, 70, 25
+(viết gọn mã vạch \code{00000050} thành 50). Hình~\ref{fig:chen} là cây sau các bước có tách nút; nút tô màu là
+nút vừa được tạo hoặc thay đổi. Các bước này trùng khớp với kết quả chương trình in ra ở chế độ
+\code{./test\_btree demo} (Mục~\ref{sec:manhinh}).
+
+\forestset{bt/.style={for tree={draw,rounded corners=1pt,font=\ttfamily\footnotesize,inner sep=1.5pt,
+  s sep=1.5mm,l sep=4mm,edge={thick,black!60}}},
+  moi/.style={fill=orange!25}}
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[b]{0.22\linewidth}\centering
+\begin{forest} bt [50,moi [20,moi] [80,moi]] \end{forest}
+\caption{Chèn 50, 20, 80: lá \code{[20|50|80]} tràn, tách, 50 lên gốc mới}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.25\linewidth}\centering
+\begin{forest} bt [{20 | 50},moi [10,moi] [30,moi] [80]] \end{forest}
+\caption{Chèn 10, 30: lá \code{[10|20|30]} tràn, 20 lên cha}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.24\linewidth}\centering
+\begin{forest} bt [50,moi [20,moi [10] [30]] [80,moi [60,moi] [90,moi]]] \end{forest}
+\caption{Chèn 60, 90: tách lá, 80 lên làm gốc tràn, tách gốc: cây cao 3}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.26\linewidth}\centering
+\begin{forest} bt [50 [{20 | 30},moi [10] [25,moi] [40,moi]] [80 [{60 | 70}] [90]]] \end{forest}
+\caption{Chèn 40, 70, 25: lá \code{[25|30|40]} tràn, 30 lên cha}
+\end{subfigure}
+\caption{Chèn và tách nút trên B-Tree bậc 3}
+\label{fig:chen}
+\end{figure}
+
+\subsection{Xóa: mượn và gộp nút}
+
+Xóa một khóa ở nút trong được quy về xóa ở lá: khóa bị thay bằng \emph{khóa liền trước} (khóa lớn nhất của cây
+con trái), rồi xóa khóa liền trước đó khỏi lá. Sau khi xóa ở cây con, nếu nút con còn ít hơn $t-1$ khóa (thiếu),
+nút cha sửa lại bằng một trong ba cách theo thứ tự ưu tiên: mượn anh trái, mượn anh phải, gộp với anh em.
+
+\begin{algorithm}[htbp]
+\caption{Xóa mặt hàng (\code{btRemove}) với mượn và gộp nút}\label{alg:xoa}
+\begin{algorithmic}[1]
+\Function{Xoa}{$T, k$}
+  \State $\mathit{kq} \gets \Call{XoaDeQuy}{T, T.\mathit{root}, k}$
+  \If{$\mathit{kq} \neq \textsc{nil}$ \textbf{và} $T.\mathit{root}.n = 0$} \Comment{gốc rỗng: cây thấp đi 1 mức}
+    \State $T.\mathit{root} \gets$ (\textbf{nếu} gốc là lá \textbf{thì} \textsc{nil} \textbf{ngược lại} $T.\mathit{root}.\mathit{child}[0]$); giải phóng gốc cũ
+  \EndIf
+  \State \Return $\mathit{kq}$ \Comment{con trỏ mặt hàng; \code{Inventory} chịu trách nhiệm \code{delete}}
+\EndFunction
+\Statex
+\Function{XoaDeQuy}{$T, x, k$}
+  \State $i \gets \Call{TimViTri}{x, k}$
+  \If{$i < x.n$ \textbf{và} $x.\mathit{keys}[i].\mathit{maVach} = k$}
+    \State $\mathit{kq} \gets x.\mathit{keys}[i]$
+    \If{$x.\mathit{leaf}$} \State dời trái $x.\mathit{keys}[i+1..]$; $x.n \gets x.n - 1$; \Return $\mathit{kq}$ \EndIf
+    \State $x.\mathit{keys}[i] \gets \Call{XoaMax}{T, x.\mathit{child}[i]}$ \Comment{thay bằng khóa liền trước}
+  \ElsIf{$x.\mathit{leaf}$} \State \Return \textsc{nil} \Comment{không có khóa}
+  \Else \State $\mathit{kq} \gets \Call{XoaDeQuy}{T, x.\mathit{child}[i], k}$
+  \EndIf
+  \If{$\mathit{kq} \neq \textsc{nil}$ \textbf{và} $x.\mathit{child}[i].n < t - 1$} \State \Call{SuaThieu}{$T, x, i$} \EndIf
+  \State \Return $\mathit{kq}$
+\EndFunction
+\Statex
+\Procedure{SuaThieu}{$T, x, i$} \Comment{$c = x.\mathit{child}[i]$ có $t-2$ khóa}
+  \If{$i > 0$ \textbf{và} $x.\mathit{child}[i-1].n > t-1$} \Comment{mượn anh trái}
+    \State $c$ nhận $x.\mathit{keys}[i-1]$ ở đầu; $x.\mathit{keys}[i-1] \gets$ khóa cuối của anh trái
+    \State con cuối của anh trái thành con đầu của $c$
+  \ElsIf{$i < x.n$ \textbf{và} $x.\mathit{child}[i+1].n > t-1$} \Comment{mượn anh phải (đối xứng)}
+    \State $c$ nhận $x.\mathit{keys}[i]$ ở cuối; $x.\mathit{keys}[i] \gets$ khóa đầu của anh phải
+  \ElsIf{$i > 0$} \State \Call{Gop}{$x, i-1$} \Else \State \Call{Gop}{$x, i$} \EndIf
+\EndProcedure
+\Statex
+\Procedure{Gop}{$x, j$} \Comment{gộp $\mathit{child}[j]$, $\mathit{keys}[j]$, $\mathit{child}[j+1]$}
+  \State $\mathit{trai}.\mathit{keys} \gets \mathit{trai}.\mathit{keys} \cdot x.\mathit{keys}[j] \cdot \mathit{phai}.\mathit{keys}$; nối các con tương ứng
+  \State xóa $x.\mathit{keys}[j]$ và $x.\mathit{child}[j+1]$ khỏi $x$ (dời trái); giải phóng nút $\mathit{phai}$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\textsc{XoaMax}$(T,x)$ đi theo con phải nhất xuống lá, gỡ khóa cuối, và trên đường quay lên gọi \textsc{SuaThieu}
+cho nút con bị thiếu -- giống \textsc{XoaDeQuy}.
+
+\paragraph{Tính đúng của phép gộp.} Chỉ gộp khi anh em có đúng $t-1$ khóa (không mượn được). Nút sau gộp có
+$(t-2) + 1 + (t-1) = 2t-2 = 2\lceil m/2\rceil - 2 \le m-1$ khóa, vừa trong một nút. Cha mất một khóa và có thể
+thiếu; lời gọi ở mức trên sẽ sửa tiếp. Nếu gốc mất khóa cuối cùng, con duy nhất của nó trở thành gốc mới.
+
+\paragraph{Ví dụ chạy tay.} Tiếp tục từ cây ở Hình~\ref{fig:chen}d, xóa lần lượt 20, 30, 50, 10, 90
+(Hình~\ref{fig:xoa}).
+
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[b]{0.25\linewidth}\centering
+\begin{forest} bt [50 [30,moi [{10 | 25},moi] [40]] [80 [{60 | 70}] [90]]] \end{forest}
+\caption{Xóa 20: thay bằng 10; lá rỗng, anh phải \code{[25]} không cho mượn được, gộp thành \code{[10|25]}}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.23\linewidth}\centering
+\begin{forest} bt [50 [25,moi [10,moi] [40]] [80 [{60 | 70}] [90]]] \end{forest}
+\caption{Xóa 30: thay bằng khóa liền trước 25; lá \code{[10]} không thiếu}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.24\linewidth}\centering
+\begin{forest} bt [{40 | 80},moi [{10 | 25},moi] [{60 | 70}] [90]] \end{forest}
+\caption{Xóa 50: thay bằng 40, gộp 2 lần, gốc rỗng, cây thấp đi}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.24\linewidth}\centering
+\begin{forest} bt [{40 | 70},moi [25] [60,moi] [80,moi]] \end{forest}
+\caption{Xóa 10, rồi 90: lá rỗng, mượn anh trái: 70 lên, 80 xuống}
+\end{subfigure}
+\caption{Xóa trên B-Tree bậc 3: gộp nút, cây thấp đi và mượn nút}
+\label{fig:xoa}
+\end{figure}
+
+\subsection{Duyệt, đếm và in cây}
+
+\begin{itemize}
+  \item \code{btTraverse}: duyệt trung thứ tự (con $0$, khóa $0$, con $1$, khóa $1$,~\ldots), gọi hàm
+        \code{visit(mh, ctx)} cho từng mặt hàng theo thứ tự mã vạch tăng dần. Các mô-đun khác dùng hàm này để
+        ghi tệp, lập báo cáo và giải phóng bộ nhớ mà không cần biết cấu trúc nút. $O(n)$.
+  \item \code{btHeight} đi theo con trái nhất: $O(h)$; \code{btSoNut} đếm đệ quy: $O(n)$.
+  \item \code{btPrint} in cây theo từng mức (\code{Muc 0}, \code{Muc 1},~\ldots) bằng cách duyệt lại cây cho
+        mỗi mức: $O(n\cdot h)$, chỉ dùng cho cây nhỏ khi trình diễn.
+  \item \code{btDestroy} giải phóng mọi nút nhưng \emph{không} giải phóng mặt hàng (theo quy ước sở hữu).
+\end{itemize}
+
+% -----------------------------------------------------------------------------
+\section{Nhập kho và xuất kho FIFO}
+% -----------------------------------------------------------------------------
+
+\begin{algorithm}[htbp]
+\caption{Nhập kho và xuất kho theo FIFO (\code{nhapKho}, \code{xuatKho})}\label{alg:fifo}
+\begin{algorithmic}[1]
+\Function{NhapKho}{$\mathit{kho}, \mathit{ma}, \mathit{sl}, \mathit{giaNhap}, \mathit{hsd}, \mathit{ngay}$}
+  \If{$\mathit{sl} \le 0$ \textbf{hoặc} ngày không hợp lệ \textbf{hoặc} $\mathit{hsd} < \mathit{ngay}$} \State \Return \code{KQ\_DU\_LIEU\_SAI} \EndIf
+  \State $\mathit{mh} \gets \Call{Tim}{\mathit{kho}.\mathit{cay}, \mathit{ma}}$; \textbf{nếu} $\mathit{mh} = \textsc{nil}$ \Return \code{KQ\_KHONG\_TIM\_THAY}
+  \State $\mathit{lo} \gets$ lô mới (mã $\mathit{kho}.\mathit{maLoKeTiep}$++, $\mathit{ngay}$, $\mathit{hsd}$, $\mathit{sl}$, $\mathit{giaNhap}$)
+  \State \Call{Enqueue}{$\mathit{mh}.\mathit{dsLo}, \mathit{lo}$} \Comment{thêm vào cuối, $O(1)$}
+  \State $\mathit{mh}.\mathit{tonKho} \gets \mathit{mh}.\mathit{tonKho} + \mathit{sl}$; thêm phiếu \code{NHAP} vào cuối danh sách phiếu
+\EndFunction
+\Statex
+\Function{XuatKho}{$\mathit{kho}, \mathit{ma}, \mathit{sl}, \mathit{ngay}$}
+  \State kiểm tra $\mathit{sl} > 0$, ngày hợp lệ; $\mathit{mh} \gets \Call{Tim}{\mathit{kho}.\mathit{cay}, \mathit{ma}}$
+  \If{$\mathit{mh}.\mathit{tonKho} < \mathit{sl}$} \State \Return \code{KQ\_KHONG\_DU\_HANG} \Comment{kiểm tra trước, không xuất dở dang}\EndIf
+  \State $\mathit{can} \gets \mathit{sl}$
+  \While{$\mathit{can} > 0$}
+    \State $\mathit{lo} \gets \Call{Front}{\mathit{mh}.\mathit{dsLo}}$ \Comment{lô cũ nhất}
+    \If{$\mathit{lo}.\mathit{soLuong} \le \mathit{can}$}
+      \State $\mathit{can} \gets \mathit{can} - \mathit{lo}.\mathit{soLuong}$; \Call{Dequeue}{$\mathit{mh}.\mathit{dsLo}$}; giải phóng $\mathit{lo}$
+    \Else \State $\mathit{lo}.\mathit{soLuong} \gets \mathit{lo}.\mathit{soLuong} - \mathit{can}$; $\mathit{can} \gets 0$
+    \EndIf
+  \EndWhile
+  \State $\mathit{mh}.\mathit{tonKho} \gets \mathit{mh}.\mathit{tonKho} - \mathit{sl}$; thêm phiếu \code{XUAT} với đơn giá bán hiện tại
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Độ phức tạp:} nhập kho $O(\log n)$ (tìm) $+\ O(1)$; xuất kho $O(\log n + k)$ với $k$ là số lô bị lấy
+hết -- mỗi lô chỉ bị lấy hết một lần trong đời nên tổng chi phí khấu trừ của mọi lần xuất là $O(\log n)$ mỗi lần.
+Xuất kho kiểm tra đủ hàng \emph{trước} khi thay đổi dữ liệu, nên thao tác hoặc thành công trọn vẹn hoặc không
+làm thay đổi gì.
+
+\paragraph{Ví dụ chạy tay (dữ liệu mẫu).} Mặt hàng \code{8930000000002} được nhập 3 lô 38, 38, 39 đơn vị
+(\code{PN00003}--\code{PN00005}); phiếu \code{PX00006} xuất 51 đơn vị. Lô 3 (38) bị lấy hết và gỡ khỏi hàng đợi,
+còn thiếu $51-38 = 13$ đơn vị lấy từ lô 4, lô 4 còn 25 (Hình~\ref{fig:fifo}). Kết quả khớp với \code{lo.txt}.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  lo/.style={rectangle split,rectangle split parts=2,draw,font=\scriptsize\ttfamily,align=center,
+             minimum width=1.7cm,inner sep=2pt,fill=cTan!60},
+  het/.style={lo,fill=black!8,text=black!45,dashed},
+  ptr/.style={-{Stealth[length=1.8mm]},thick}]
+  \node[font=\small\bfseries,anchor=east] at (-0.6,0) {Trước};
+  \node[lo] (a3) at (1,0) {LO3\nodepart{two}38};
+  \node[lo] (a4) at (3.2,0) {LO4\nodepart{two}38};
+  \node[lo] (a5) at (5.4,0) {LO5\nodepart{two}39};
+  \draw[ptr] (a3) -- (a4); \draw[ptr] (a4) -- (a5);
+  \node[font=\scriptsize,anchor=west] at (6.4,0) {tồn = 115};
+  \node[font=\scriptsize] (f1) at (1,1) {front}; \draw[ptr] (f1) -- (a3);
+  \node[font=\scriptsize] (r1) at (5.4,1) {rear}; \draw[ptr] (r1) -- (a5);
+  \node[font=\small\bfseries,anchor=east] at (-0.6,-2) {Sau};
+  \node[het] (b3) at (1,-2) {LO3\nodepart{two}0};
+  \node[lo,fill=orange!30] (b4) at (3.2,-2) {LO4\nodepart{two}25};
+  \node[lo] (b5) at (5.4,-2) {LO5\nodepart{two}39};
+  \draw[ptr] (b4) -- (b5);
+  \node[font=\scriptsize,anchor=west] at (6.4,-2) {tồn = 64};
+  \node[font=\scriptsize] (f2) at (3.2,-1) {front}; \draw[ptr] (f2) -- (b4);
+  \node[font=\scriptsize,align=center] at (1,-3) {lấy 38, gỡ lô};
+  \node[font=\scriptsize,align=center] at (3.2,-3) {lấy 13};
+  \draw[-{Stealth},very thick,black!50] (8.3,-0.3) -- node[right,font=\scriptsize,align=left]{xuất 51\\(\code{PX00006})} (8.3,-1.7);
+\end{tikzpicture}
+\caption{Xuất kho FIFO 51 đơn vị mặt hàng \code{8930000000002}}
+\label{fig:fifo}
+\end{figure}
+
+% -----------------------------------------------------------------------------
+\section{Merge Sort tự cài đặt}
+% -----------------------------------------------------------------------------
+
+Merge Sort~\cite{sedgewick} được cài dưới dạng một hàm mẫu (template) \code{mergeSort<T>(a, n, truoc)} dùng chung cho mọi kiểu
+sắp xếp; \code{truoc(x, y)} trả về \textbf{đúng} nếu $x$ phải đứng trước $y$. Mảng tạm $n$ phần tử được cấp phát
+một lần và dùng lại ở mọi mức đệ quy.
+
+\begin{algorithm}[htbp]
+\caption{Merge Sort ổn định (\code{Sort.h})}\label{alg:mergesort}
+\begin{algorithmic}[1]
+\Procedure{SapDeQuy}{$a, \mathit{tam}, l, r$} \Comment{sắp $a[l..r-1]$}
+  \If{$r - l < 2$} \State \Return \EndIf
+  \State $g \gets l + \lfloor (r-l)/2 \rfloor$; \Call{SapDeQuy}{$a, \mathit{tam}, l, g$}; \Call{SapDeQuy}{$a, \mathit{tam}, g, r$}
+  \State $i \gets l$; $j \gets g$; $k \gets l$
+  \While{$i < g$ \textbf{và} $j < r$}
+    \If{$\mathit{truoc}(a[j], a[i])$} \State $\mathit{tam}[k{+}{+}] \gets a[j{+}{+}]$ \Comment{chỉ lấy bên phải khi \emph{thật sự} đứng trước}
+    \Else \State $\mathit{tam}[k{+}{+}] \gets a[i{+}{+}]$ \Comment{bằng nhau: lấy bên trái $\Rightarrow$ ổn định}
+    \EndIf
+  \EndWhile
+  \State chép phần còn lại của hai nửa vào $\mathit{tam}$; chép $\mathit{tam}[l..r-1]$ về $a$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Độ phức tạp:} $T(n) = 2T(n/2) + \Theta(n) \Rightarrow \Theta(n\log n)$ ở mọi trường hợp; bộ nhớ phụ
+$\Theta(n)$; độ sâu đệ quy $\lceil\log_2 n\rceil$. Các tiêu chí sắp xếp được dùng:
+
+\begin{table}[htbp]
+\centering\small
+\caption{Các kiểu sắp xếp dùng trong báo cáo}
+\label{tab:sapxep}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Hàm} & \textbf{Tiêu chí} & \textbf{Dùng cho} \\
+\midrule
+\code{sapXepTheoTen} & tên (không phân biệt hoa thường), rồi mã vạch & tìm theo tên, liệt kê 1 nhóm \\
+\code{sapXepTheoNhom} & nhóm, rồi tên, rồi mã vạch & liệt kê tất cả, gom nhóm \\
+\code{sapXepTheoTonKho} & tồn kho tăng dần & cảnh báo tồn dưới ngưỡng \\
+\code{sapXepTheoHSD} & HSD tăng dần & cảnh báo sắp hết hạn \\
+\code{sapXepBanChay} & số lượng bán giảm dần, rồi mã vạch & top 10 bán chạy \\
+\code{sapXepGiaTriNhom} & giá trị tồn giảm dần & báo cáo giá trị nhóm \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% -----------------------------------------------------------------------------
+\section{Tìm kiếm và báo cáo}
+% -----------------------------------------------------------------------------
+
+Các hàm báo cáo duyệt B-Tree qua \code{btTraverse} với một hàm gọi lại và một ``ngữ cảnh'' (\code{ctx}) chứa
+điều kiện lọc và mảng kết quả. Khi cần trả về mảng có kích thước chưa biết trước (cảnh báo HSD, bán chạy), hàm
+duyệt hai lượt: lượt đầu đếm, lượt sau cấp phát đúng kích thước rồi ghi.
+
+\begin{itemize}
+  \item \textbf{Tìm theo tên}: đổi tên và từ khóa sang chữ thường, giữ mặt hàng có tên chứa từ khóa, sắp theo
+        tên. $O(n\cdot\ell + r\log r)$, $\ell$ là độ dài tên.
+  \item \textbf{Liệt kê theo nhóm}: so sánh nhóm không phân biệt hoa thường (\code{"Do uong"} và
+        \code{"DO UONG"} là một nhóm); để trống thì liệt kê tất cả, sắp theo nhóm rồi tên. $O(n\log n)$.
+  \item \textbf{Cảnh báo tồn dưới ngưỡng}: \code{tonKho < nguongCanhBao}, sắp theo tồn tăng dần. $O(n + r\log r)$.
+  \item \textbf{Cảnh báo HSD}: với mỗi lô còn hàng tính số ngày còn lại
+        $d = \textsc{NgayTuyetDoi}(\mathit{hsd}) - \textsc{NgayTuyetDoi}(\mathit{homNay})$, giữ lô có $d \le 7$
+        (kể cả $d < 0$: đã quá hạn nhưng vẫn còn hàng), sắp theo HSD. $O(n + L + r\log r)$.
+  \item \textbf{Giá trị tồn theo nhóm}: không có \code{std::map}, nên gom tất cả mặt hàng, Merge Sort theo nhóm để các
+        mặt hàng cùng nhóm nằm liền nhau, rồi quét một lượt cộng dồn số mặt hàng, tổng tồn và giá trị
+        $\sum \mathit{soLuong}\times\mathit{giaNhap}$ của các lô. $O(n\log n + L)$.
+\end{itemize}
+
+\begin{algorithm}[htbp]
+\caption{Top $k$ mặt hàng bán chạy trong tháng (\code{topBanChay})}\label{alg:top}
+\begin{algorithmic}[1]
+\Function{TopBanChay}{$\mathit{kho}, \mathit{thang}, \mathit{nam}, k$}
+  \ForEach{mặt hàng $\mathit{mh}$ trong cây} $\mathit{mh}.\mathit{demTam} \gets 0$ \EndFor \Comment{$O(n)$}
+  \ForEach{phiếu $p$ trong danh sách phiếu} \Comment{$O(P\log n)$}
+    \If{$p.\mathit{loai} = \code{XUAT}$ \textbf{và} $p.\mathit{ngay}$ thuộc $\mathit{thang}/\mathit{nam}$}
+      \State $\mathit{mh} \gets \Call{Tim}{\mathit{kho}.\mathit{cay}, p.\mathit{maVach}}$
+      \If{$\mathit{mh} \ne \textsc{nil}$} $\mathit{mh}.\mathit{demTam} \gets \mathit{mh}.\mathit{demTam} + p.\mathit{soLuong}$ \EndIf \Comment{mã đã xóa: bỏ qua}
+    \EndIf
+  \EndFor
+  \State $a \gets$ các mặt hàng có $\mathit{demTam} > 0$ (duyệt cây hai lượt)
+  \State \Call{MergeSort}{$a$, giảm dần theo $\mathit{demTam}$, bằng nhau theo mã vạch}
+  \State \Return $\min(k, |a|)$ phần tử đầu của $a$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+Trường \code{demTam} được đặt lại về 0 ở đầu mỗi lần gọi nên gọi nhiều lần không bị cộng dồn.
+Độ phức tạp $O(n + P\log n + r\log r)$.
+
+% -----------------------------------------------------------------------------
+\section{Xử lý ngày}
+% -----------------------------------------------------------------------------
+
+Ngày được quy đổi sang \emph{số ngày tuyệt đối} để cộng, trừ, so sánh trong $O(1)$. Coi tháng 1, 2 là tháng 13,
+14 của năm trước (để ngày nhuận 29/02 nằm cuối ``năm''): với $y' = y - [m \le 2]$, $m' = m + 12[m \le 2]$,
+\[
+  N(d, m, y) = 365y' + \left\lfloor\tfrac{y'}{4}\right\rfloor - \left\lfloor\tfrac{y'}{100}\right\rfloor
+  + \left\lfloor\tfrac{y'}{400}\right\rfloor + \left\lfloor\tfrac{153m' - 457}{5}\right\rfloor + d - 306 .
+\]
+Hàm ngược \code{daysToDate} khôi phục $(d, m, y)$ từ $N$. Khi đó
+\begin{gather*}
+  \mathit{congNgay}(D, k) = \mathit{daysToDate}\big(N(D) + k\big), \\
+  \mathit{khoangCachNgay}(D_1, D_2) = N(D_1) - N(D_2).
+\end{gather*}
+Năm nhuận theo lịch Gregory: chia hết cho 4 nhưng không chia hết cho 100, hoặc chia hết cho 400. Ngày hợp lệ phải
+có năm 1900--2100.
+
+% -----------------------------------------------------------------------------
+\section{Đọc và ghi tệp}
+% -----------------------------------------------------------------------------
+
+Khi khởi động, chương trình đọc lần lượt \code{mathang.txt}, \code{lo.txt}, \code{phieu.txt}. Mỗi dòng được bỏ
+ký tự \code{\textbackslash r} cuối dòng (tệp tạo trên Windows), tách theo \code{|} và kiểm tra từng trường.
+Dòng sai bị \emph{bỏ qua} và báo ra màn hình kèm tên tệp, số dòng và lý do, thay vì dừng chương trình.
+
+\begin{algorithm}[htbp]
+\caption{Đọc tệp lô (\code{docLo})}\label{alg:doclo}
+\begin{algorithmic}[1]
+\ForEach{dòng $s$ của \code{lo.txt}}
+  \State tách $s$ thành 6 trường; \textbf{nếu} sai số trường: báo lỗi, bỏ qua
+  \State $\mathit{mh} \gets \Call{Tim}{\mathit{kho}.\mathit{cay}, \mathit{maVach}}$ \Comment{mã vạch phải có trong \code{mathang.txt}}
+  \State kiểm tra: mã lô dạng \code{LO}+số; hai ngày hợp lệ; $\mathit{hsd} \ge \mathit{ngayNhap}$; số lượng $> 0$; giá nhập $\ge 0$
+  \State kiểm tra thứ tự FIFO: $\mathit{ngayNhap} \ge$ ngày nhập của lô cuối hàng đợi
+  \State \Call{Enqueue}{$\mathit{mh}.\mathit{dsLo}$, lô mới}; $\mathit{mh}.\mathit{tonKho} \gets \mathit{mh}.\mathit{tonKho} + \mathit{soLuong}$ \Comment{tính lại tồn}
+  \State $\mathit{kho}.\mathit{maLoKeTiep} \gets \max(\mathit{kho}.\mathit{maLoKeTiep}, \mathit{maLo} + 1)$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+Phiếu không bắt buộc mã vạch còn trong kho (phiếu của mặt hàng đã xóa vẫn là lịch sử), nhưng mã phiếu phải
+tăng dần -- vừa phát hiện trùng mã trong $O(1)$ mỗi dòng, vừa khớp với cách ghi. Khi ghi, mỗi tệp được ghi ra
+\code{<tệp>.tmp} trước rồi mới thay tệp cũ: nếu lỗi giữa chừng, dữ liệu cũ vẫn còn nguyên. Đọc $O(n\log n + L\log n + P)$,
+ghi $O(n + L + P)$.
+
+% -----------------------------------------------------------------------------
+\section{Tổng hợp độ phức tạp}
+% -----------------------------------------------------------------------------
+
+\begin{table}[htbp]
+\centering\small
+\caption{Độ phức tạp thời gian các thao tác chính}
+\label{tab:dophuctap}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Thao tác} & \textbf{Thời gian} & \textbf{Ghi chú} \\
+\midrule
+Tìm theo mã vạch & $O(\log_t n)$ nút, $O(\log n)$ so sánh & $h \le 1 + \log_t\frac{n+1}{2}$ \\
+Thêm / xóa mặt hàng & $O(m\log_t n)$ & tách / mượn / gộp dọc một đường đi \\
+Sửa mặt hàng & $O(\log n)$ & \\
+Nhập kho & $O(\log n)$ & thêm lô cuối hàng đợi $O(1)$ \\
+Xuất kho & $O(\log n + k)$ & $k$: số lô bị lấy hết \\
+Tìm theo tên & $O(n\ell + r\log r)$ & duyệt toàn bộ cây \\
+Liệt kê theo nhóm & $O(n\log n)$ & Merge Sort \\
+Cảnh báo tồn / HSD & $O(n + L + r\log r)$ & \\
+Giá trị tồn theo nhóm & $O(n\log n + L)$ & sắp theo nhóm rồi quét \\
+Top 10 bán chạy & $O(n + P\log n + r\log r)$ & \code{demTam} + B-Tree \\
+Đọc / ghi tệp & $O((n + L)\log n + P)$ / $O(n + L + P)$ & \\
+\bottomrule
+\end{tabular}
+\end{table}

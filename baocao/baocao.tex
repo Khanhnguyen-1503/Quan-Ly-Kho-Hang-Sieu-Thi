@@ -1,0 +1,190 @@
+% =============================================================================
+% Bao cao De tai 9 - Quan ly kho hang sieu thi
+% Bien dich: latexmk -xelatex baocao.tex  (khuyen dung XeLaTeX; pdfLaTeX van chay duoc)
+% Bieu do va bang thuc nghiem doc truc tiep tu ../ketqua/ketqua_btree.csv
+% =============================================================================
+\documentclass[12pt,a4paper,oneside]{report}
+
+% ---- THONG TIN CAN DIEN (sua o day) ----------------------------------------
+\newcommand{\TenTruong}{[TÊN TRƯỜNG]}
+\newcommand{\TenKhoa}{[TÊN KHOA]}
+\newcommand{\TenMonHoc}{Cấu trúc dữ liệu và giải thuật}
+\newcommand{\GiangVien}{[Họ tên giảng viên]}
+\newcommand{\TenLop}{[Lớp]}
+\newcommand{\ThoiGian}{Tháng 11 năm 2026}
+\newcommand{\TVa}{Khánh Nguyên}   \newcommand{\MSa}{[MSSV]}
+\newcommand{\TVb}{Minh Tân}       \newcommand{\MSb}{[MSSV]}
+\newcommand{\TVc}{Long Vũ}        \newcommand{\MSc}{[MSSV]}
+\newcommand{\TVd}{Huỳnh Tín}      \newcommand{\MSd}{[MSSV]}
+% ---------------------------------------------------------------------------
+
+\usepackage[a4paper,left=3cm,right=2cm,top=2.5cm,bottom=2.5cm]{geometry}
+% Font: nen dung XeLaTeX (Overleaf: Menu > Compiler > XeLaTeX). Font duoc goi theo TEN TEP
+% (co san trong TeX Live) nen khong phu thuoc font cai tren may. Neu lo bien dich bang
+% pdfLaTeX thi tu chuyen sang bang ma tieng Viet T5 (font Times tuong tu).
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T5]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{mathptmx}
+  \usepackage[scaled=0.92]{helvet}
+  \renewcommand{\ttdefault}{lmtt}   % hep hon Courier, co bang ma T5
+  \usepackage[vietnamese]{babel}
+  \newcommand{\cochumanhinh}{\fontsize{7}{8.4}\selectfont}
+\else
+  \usepackage{fontspec}
+  \setmainfont{texgyretermes}[Extension=.otf,UprightFont=*-regular,BoldFont=*-bold,
+    ItalicFont=*-italic,BoldItalicFont=*-bolditalic]
+  \setsansfont{texgyreheros}[Extension=.otf,UprightFont=*-regular,BoldFont=*-bold,
+    ItalicFont=*-italic,BoldItalicFont=*-bolditalic]
+  \setmonofont{DejaVuSansMono}[Extension=.ttf,UprightFont=*,BoldFont=*-Bold,
+    ItalicFont=*-Oblique,BoldItalicFont=*-BoldOblique,Scale=0.82]
+  \usepackage{polyglossia}
+  \setdefaultlanguage{vietnamese}
+  \newcommand{\cochumanhinh}{\scriptsize}
+\fi
+\usepackage{amsmath,amssymb}
+\usepackage{setspace}
+\setstretch{1.15}
+\setlength{\parskip}{2pt}
+\setlength{\emergencystretch}{2em}
+% Cho phep hinh/bang nam cung trang voi chu, tranh trang chi co mot hinh
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.8}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{5}
+
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs,tabularx,multirow,array,longtable}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\usepackage{caption,subcaption}
+\captionsetup{font=small,labelfont=bf}
+\captionsetup[sub]{font=footnotesize,justification=centering}
+\usepackage{enumitem}
+\setlist{itemsep=1pt,topsep=3pt}
+\usepackage{titlesec}
+\titleformat{\chapter}[display]{\normalfont\bfseries\Large\centering}{\MakeUppercase{\chaptertitlename}\ \thechapter}{6pt}{\LARGE}
+\titlespacing*{\chapter}{0pt}{-36pt}{12pt}
+\titleformat{\section}{\normalfont\bfseries\large}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalfont\bfseries}{\thesubsection}{0.6em}{}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\itshape Đề tài 9 -- Quản lý kho hàng siêu thị}
+\fancyhead[R]{\small\itshape\leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\thepage}\renewcommand{\headrulewidth}{0pt}}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.multipart,fit,calc,backgrounds,matrix}
+\usepackage[edges]{forest}
+\usepackage{pgfplots,pgfplotstable}
+\pgfplotsset{compat=1.18}
+% Loc dong CSV theo gia tri cot: discard if not={m}{3}
+\pgfplotsset{discard if not/.style 2 args={x filter/.append code={%
+  \edef\tempa{\thisrow{#1}}\edef\tempb{#2}\ifx\tempa\tempb\else\def\pgfmathresult{inf}\fi}}}
+\newcommand{\CSV}{../ketqua/ketqua_btree.csv}
+
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\floatname{algorithm}{Thuật toán}
+\renewcommand{\listalgorithmname}{Danh mục thuật toán}
+\algrenewcommand\algorithmicfunction{\textbf{hàm}}
+\algrenewcommand\algorithmicprocedure{\textbf{thủ tục}}
+\algrenewcommand\algorithmicif{\textbf{nếu}}
+\algrenewcommand\algorithmicthen{\textbf{thì}}
+\algrenewcommand\algorithmicelse{\textbf{ngược lại}}
+\algrenewcommand\algorithmicwhile{\textbf{trong khi}}
+\algrenewcommand\algorithmicfor{\textbf{với}}
+\algrenewcommand\algorithmicdo{\textbf{làm}}
+\algrenewcommand\algorithmicreturn{\textbf{trả về}}
+\algnewcommand\algorithmicforeach{\textbf{với mỗi}}
+\algdef{S}[FOR]{ForEach}[1]{\algorithmicforeach\ #1\ \algorithmicdo}
+\algrenewcommand\alglinenumber[1]{\scriptsize #1:}
+
+\usepackage{listings}
+\lstset{basicstyle=\ttfamily\scriptsize,columns=fullflexible,keepspaces=true,
+  keywordstyle=\color{blue!60!black}\bfseries,commentstyle=\color{green!40!black}\itshape,
+  stringstyle=\color{red!50!black},frame=single,rulecolor=\color{black!25},
+  backgroundcolor=\color{black!3},numbers=none,breaklines=true,xleftmargin=4pt,xrightmargin=4pt,
+  language=C++,morekeywords={nullptr}}
+\renewcommand{\lstlistingname}{Mã nguồn}
+
+\usepackage{tcolorbox}
+\tcbuselibrary{listings}
+% Khung "man hinh" cho ket qua chay chuong trinh trong terminal.
+% Khong dung breakable / \color trong fonttitle: voi XeTeX mau chu co the lan ra ngoai hop.
+\newtcblisting{manhinh}[1][]{listing only,colback=black!88,colframe=black!60,
+  colupper=green!85!white,coltitle=white,arc=2pt,boxrule=0.6pt,left=4pt,right=4pt,top=3pt,bottom=3pt,
+  listing options={basicstyle=\ttfamily\cochumanhinh,columns=fixed,
+  keepspaces=true,breaklines=false,frame=none,backgroundcolor={},language={}},
+  title={\ttfamily\scriptsize #1},colbacktitle=black!65}
+
+\usepackage[hidelinks]{hyperref}
+\usepackage{bookmark}
+
+% Mau theo thanh vien (so do mo-dun)
+\definecolor{cNguyen}{HTML}{DCE9F7}
+\definecolor{cTan}{HTML}{DDF2DF}
+\definecolor{cVu}{HTML}{FBE7CF}
+\definecolor{cTin}{HTML}{EADFF4}
+\definecolor{cChung}{HTML}{EEEEEE}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\ok}{\checkmark}
+
+\begin{document}
+
+% ============================ TRANG BIA =====================================
+\begin{titlepage}
+\begin{tikzpicture}[remember picture,overlay]
+  \draw[line width=2pt] ($(current page.north west)+(2.3cm,-1.6cm)$) rectangle ($(current page.south east)+(-1.4cm,1.6cm)$);
+  \draw[line width=0.6pt] ($(current page.north west)+(2.45cm,-1.75cm)$) rectangle ($(current page.south east)+(-1.55cm,1.75cm)$);
+\end{tikzpicture}
+\centering\setstretch{1.2}
+{\large\bfseries \MakeUppercase{\TenTruong}\par}
+{\large\bfseries \MakeUppercase{\TenKhoa}\par}
+\vspace{1.6cm}
+{\Large\bfseries BÁO CÁO ĐỒ ÁN\par}
+{\large \TenMonHoc\par}
+\vspace{1.4cm}
+{\large Đề tài 9\par}
+\vspace{0.3cm}
+{\huge\bfseries QUẢN LÝ KHO HÀNG SIÊU THỊ\par}
+\vspace{0.4cm}
+{\large B-Tree bậc $m$ theo mã vạch, hàng đợi lô FIFO, báo cáo tồn kho\par}
+\vspace{2cm}
+\begin{tabular}{ll}
+\textbf{Giảng viên hướng dẫn:} & \GiangVien \\
+\textbf{Lớp:} & \TenLop \\[6pt]
+\textbf{Nhóm sinh viên thực hiện:} & \\
+\quad \TVa & \MSa \\
+\quad \TVb & \MSb \\
+\quad \TVc & \MSc \\
+\quad \TVd & \MSd \\
+\end{tabular}
+\vfill
+{\large \ThoiGian\par}
+\vspace{1.2cm}
+\end{titlepage}
+
+\pagenumbering{roman}
+\tableofcontents
+\listoffigures
+\listoftables
+\clearpage
+\pagenumbering{arabic}
+
+\input{chuong1}
+\input{chuong2}
+\input{chuong3}
+\input{chuong4}
+\input{chuong5}
+\input{chuong6}
+
+\end{document}

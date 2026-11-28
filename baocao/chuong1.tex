@@ -1,0 +1,101 @@
+% =============================================================================
+\chapter{Giới thiệu}
+% =============================================================================
+
+\section{Bài toán}
+
+Một siêu thị cỡ vừa kinh doanh từ vài nghìn đến hàng trăm nghìn mặt hàng. Mỗi mặt hàng được định danh
+bằng \emph{mã vạch} EAN-8 (8 chữ số) hoặc EAN-13 (13 chữ số), thuộc một \emph{nhóm hàng}
+(đồ uống, bánh kẹo, gia vị,~\ldots), có đơn giá bán và một ngưỡng tồn kho tối thiểu.
+
+Hàng không được nhập một lần mà theo nhiều \emph{lô}. Mỗi lần nhập tạo một lô mới với số lượng, giá nhập
+và \emph{hạn sử dụng (HSD) riêng}: cùng một loại sữa tươi nhưng lô nhập đầu tháng hết hạn sớm hơn lô nhập
+cuối tháng. Vì vậy khi bán (xuất kho), siêu thị phải lấy hàng từ lô nhập sớm nhất trước --
+nguyên tắc \emph{nhập trước, xuất trước} (FIFO) -- để hạn chế hàng tồn quá hạn. Nếu lô cũ nhất không đủ,
+lấy tiếp các lô sau.
+
+Bên cạnh nhập/xuất, người quản lý cần tra cứu nhanh một mặt hàng theo mã vạch, tìm theo tên, xem cảnh báo
+hàng sắp hết và hàng sắp hết hạn, nắm giá trị tồn kho theo nhóm và biết mặt hàng nào bán chạy trong tháng.
+
+Đề tài yêu cầu xây dựng chương trình quản lý kho đáp ứng các nhu cầu trên, với trọng tâm là lựa chọn và
+tự cài đặt các cấu trúc dữ liệu phù hợp: \textbf{B-Tree bậc $m$} làm chỉ mục mặt hàng theo mã vạch và
+\textbf{hàng đợi FIFO trên danh sách liên kết} cho các lô của từng mặt hàng.
+
+\section{Yêu cầu chức năng}
+
+\begin{table}[htbp]
+\centering\small
+\caption{Yêu cầu của đề tài và mô-đun đáp ứng}
+\label{tab:yeucau}
+\begin{tabularx}{\linewidth}{@{}clY l@{}}
+\toprule
+\textbf{STT} & \textbf{Loại} & \textbf{Yêu cầu} & \textbf{Mô-đun} \\
+\midrule
+1 & Bắt buộc & B-Tree bậc $m$ khóa mã vạch: tìm, chèn (tách nút), xóa (mượn, gộp nút), duyệt & \code{BTree} \\
+2 & Bắt buộc & Hàng đợi FIFO các lô cho từng mặt hàng; phiếu nhập tạo lô mới; phiếu xuất lấy từ lô cũ nhất, thiếu thì lấy tiếp lô sau; cập nhật tồn kho; lưu danh sách phiếu & \code{LotQueue}, \code{Phieu}, \code{Inventory} \\
+3 & Bắt buộc & Tìm theo tên (chuỗi con), liệt kê theo nhóm; tự cài Merge Sort & \code{Sort}, \code{Report} \\
+4 & Bắt buộc & Cảnh báo tồn dưới ngưỡng; cảnh báo hàng hết hạn trong 7 ngày, sắp theo HSD & \code{Report} \\
+5 & Bắt buộc & Báo cáo giá trị tồn theo nhóm; top 10 bán chạy trong tháng (theo phiếu xuất) & \code{Report} \\
+6 & Bắt buộc & Đọc tệp khi khởi động, ghi khi thoát; kiểm tra dữ liệu nhập (mã trùng, sai kiểu, sai miền) & \code{FileIO}, \code{Validate} \\
+7 & Bắt buộc & Dữ liệu mẫu $\ge 30$ bản ghi và bộ lớn $\ge 10^4$; đo thời gian chạy; không rò rỉ bộ nhớ & \code{DataGen}, \code{Benchmark} \\
+8 & Nâng cao & In cây sau mỗi lần tách/gộp nút & \code{BTree} \\
+9 & Nâng cao & Đếm số nút truy xuất khi tìm với $m = 3, 5, 10$ trên $10^5$ mặt hàng & \code{BTree}, \code{Benchmark} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Ràng buộc cài đặt.} Ngôn ngữ C++17; \textbf{không dùng} \code{std::vector}, \code{std::map},
+\code{std::sort} của STL -- mọi cấu trúc (B-Tree, danh sách liên kết, mảng động) và thuật toán sắp xếp đều
+tự cài đặt. Dữ liệu lưu trong ba tệp văn bản: \code{mathang.txt}, \code{lo.txt}, \code{phieu.txt}.
+
+\section{Phân công công việc}
+
+Nhóm gồm bốn thành viên. Phần mã nguồn được chia theo mô-đun để làm song song; các kiểu dữ liệu dùng chung
+được cả nhóm chốt trong \code{Types.h} ngay từ ngày đầu, mọi thay đổi struct phải báo cả nhóm.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Phân công mã nguồn}
+\label{tab:phancong}
+\begin{tabularx}{\linewidth}{@{}l Y l@{}}
+\toprule
+\textbf{Thành viên} & \textbf{Phụ trách} & \textbf{Tệp nguồn} \\
+\midrule
+\TVa & B-Tree bậc $m$: tìm, chèn (tách nút), xóa (mượn, gộp nút), duyệt. Nâng cao: in cây sau mỗi lần tách/gộp, đếm số nút truy xuất với $m = 3, 5, 10$ & \code{BTree}, \code{Benchmark} \\
+\TVb & Hàng đợi FIFO các lô (DSLK), phiếu nhập/xuất, nhập kho, xuất kho FIFO, cập nhật tồn kho, danh sách phiếu (DSLK) & \code{LotQueue}, \code{Phieu}, \code{Inventory} \\
+\TVc & Tìm theo tên, liệt kê theo nhóm, Merge Sort, cảnh báo tồn và HSD, báo cáo giá trị nhóm, top 10 bán chạy & \code{Sort}, \code{Report} \\
+\TVd & Kiểu \code{Date}, đọc/ghi tệp, sinh dữ liệu, kiểm tra dữ liệu nhập, menu, đo thời gian, kiểm tra rò rỉ bộ nhớ & \code{Date}, \code{FileIO}, \code{DataGen}, \code{Validate}, \code{main}, \code{Benchmark} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[htbp]
+\centering\small
+\caption{Phân công báo cáo và trình bày}
+\label{tab:phancongbaocao}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Phần} & \textbf{Người thực hiện} \\
+\midrule
+Chương 1. Giới thiệu, bảng phân công & \TVd \\
+Chương 2. Phân tích thiết kế & Cả nhóm, \TVa{} tổng hợp \\
+Chương 3. Giải thuật & Mỗi người viết phần mình cài đặt \\
+Chương 4. Cài đặt và kiểm thử & \TVd{} (mỗi người gửi test case phần mình) \\
+Chương 5. Thực nghiệm & \TVa{} và \TVd \\
+Chương 6. Kết luận, tài liệu tham khảo & \TVc \\
+Slide thuyết trình & \TVc{} làm chính, mỗi người 2--3 slide \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Kế hoạch.} Ngày 1 chốt \code{Types.h}, tên hàm và định dạng tệp; ngày 2--4 cài đặt song song
+(B-Tree: tìm và chèn ngày 2--3, xóa ngày 4); ngày 5 ghép vào menu, sửa lỗi, kiểm tra rò rỉ bộ nhớ;
+ngày 6 chạy thực nghiệm, phần nâng cao, hoàn thiện báo cáo; ngày 7 đọc chéo mã nguồn và tập vấn đáp.
+Mỗi tối các thành viên đẩy mã lên kho Git chung và ghép thử.
+
+\section{Cấu trúc báo cáo}
+
+Chương~\ref{chap:thietke} phân tích thiết kế: mô hình dữ liệu, lý do chọn từng cấu trúc so với phương án khác,
+sơ đồ mô-đun. Chương~\ref{chap:giaithuat} trình bày giải thuật với mã giả, ví dụ chạy tay và độ phức tạp.
+Chương~\ref{chap:caidat} mô tả cài đặt, giao diện và kiểm thử. Chương~\ref{chap:thucnghiem} trình bày thực
+nghiệm so sánh B-Tree với $m = 3, 5, 10$. Chương~\ref{chap:ketluan} kết luận và nêu hướng phát triển.

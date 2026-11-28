@@ -1,9 +1,24 @@
+quanlykho
 test_btree
 bench_btree
 test_date
 test_dulieu
 test_kho
 test_report
+test_fileio
 gen_data
 *.exe
 *.o
+*.tmp
+# LaTeX
+baocao/*.aux
+baocao/*.log
+baocao/*.toc
+baocao/*.lof
+baocao/*.lot
+baocao/*.out
+baocao/*.fls
+baocao/*.fdb_latexmk
+baocao/*.xdv
+baocao/*.synctex.gz
+baocao/*.listing

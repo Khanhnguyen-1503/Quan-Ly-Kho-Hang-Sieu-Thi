@@ -24,6 +24,8 @@
 - **Tìm kiếm và liệt kê:** tìm theo tên (chuỗi con, không phân biệt hoa thường), liệt kê theo nhóm hàng.
 - **Cảnh báo:** mặt hàng sắp hết (tồn kho dưới ngưỡng), lô sắp hết hạn hoặc đã hết hạn.
 - **Báo cáo:** giá trị tồn kho theo nhóm, top k mặt hàng bán chạy trong tháng.
+- **Menu console** 18 chức năng: đọc dữ liệu khi khởi động, ghi lại khi thoát; mọi giá trị nhập đều được kiểm tra, nhập sai thì hỏi lại.
+- **B-Tree (nâng cao):** xem cây, bật/tắt in cây sau mỗi lần tách/gộp nút, chạy thực nghiệm m = 3, 5, 10 ngay từ menu.
 
 ## Cấu trúc thư mục
 
@@ -36,15 +38,17 @@
 ├── Sort.h/.cpp           Mảng động DsMatHang và Merge Sort
 ├── Report.h/.cpp         Tìm kiếm, cảnh báo, báo cáo
 ├── Date.h/.cpp           Kiểu ngày dd/mm/yyyy
-├── FileIO.h/.cpp         Đọc/ghi tệp dữ liệu
+├── FileIO.h/.cpp         Đọc/ghi tệp dữ liệu (bỏ qua và báo dòng lỗi, ghi qua tệp tạm)
 ├── DataGen.h/.cpp        Sinh dữ liệu mẫu và dữ liệu lớn
-├── Validate.h            Nhập dữ liệu từ bàn phím có kiểm tra
+├── Validate.h/.cpp       Nhập dữ liệu từ bàn phím có kiểm tra
 ├── Benchmark.h/.cpp      Thực nghiệm hiệu năng B-Tree
-├── main.cpp              Hiện tại: sinh dữ liệu mẫu
+├── main.cpp              Menu console cho người dùng
+├── tools/gen_data.cpp    Chương trình riêng sinh dữ liệu mẫu
 ├── Makefile
 ├── data/                 Dữ liệu mẫu: mathang.txt, lo.txt, phieu.txt
 ├── ketqua/               Kết quả thực nghiệm (ketqua_btree.csv)
-└── tests/                Các chương trình kiểm thử
+├── tests/                Các chương trình kiểm thử
+└── baocao/               Báo cáo LaTeX (baocao.tex, chuong1-6.tex) và baocao.pdf
 ```
 
 ## Biên dịch và chạy
@@ -52,12 +56,18 @@
 Yêu cầu: `g++` hỗ trợ C++17 và `make`. Trên Windows dùng MinGW, thay `make` bằng `mingw32-make`.
 
 ```bash
-make            # build tất cả
+make            # build chương trình chính ./quanlykho
+make run        # chạy menu với dữ liệu trong data/
+make all        # build chương trình chính, test, bench và gen_data
 make test       # build và chạy toàn bộ test
 make bench      # chạy thực nghiệm B-Tree, ghi ra ketqua/ketqua_btree.csv
 make gen_data   # build chương trình sinh dữ liệu mẫu
+make baocao     # biên dịch báo cáo LaTeX -> baocao/baocao.pdf (cần XeLaTeX)
 make clean      # xóa file đã build
 ```
+
+Chạy chương trình: `./quanlykho [thư mục dữ liệu] [bậc B-Tree]`, mặc định `data 5`
+(Windows: `quanlykho.exe data`). Không có `make`: `g++ -std=c++17 -O2 -I. *.cpp -o quanlykho`.
 
 Kiểm tra rò rỉ và lỗi bộ nhớ (Linux/macOS):
 
@@ -75,11 +85,13 @@ Mỗi file trong `tests/` có ghi sẵn lệnh `g++` ở đầu file nếu muố
 | `test_date` | Duyệt mọi ngày 1900–2100, năm nhuận, `parseDate`, cộng/trừ/so sánh ngày |
 | `test_kho` | LotQueue, Phiếu, thêm/sửa/xóa/tìm, nhập kho, xuất kho FIFO, 20.000 thao tác ngẫu nhiên trên 2.000 mã |
 | `test_report` | Merge Sort, tìm theo tên, liệt kê theo nhóm, cảnh báo, báo cáo, bộ dữ liệu 100.000 mặt hàng |
+| `test_fileio` | Kiểm tra nhập liệu (`Validate`), đọc/ghi tệp: đọc `data/` rồi ghi lại giống hệt từng byte, tệp có dòng lỗi, thiếu tệp, 10.000 mặt hàng |
 | `test_dulieu` | Kiểm tra 3 tệp trong `data/`: đúng định dạng, tổng số lượng các lô khớp với nhập − xuất |
+| `tests/test_menu.sh` | Chạy menu thật bằng kịch bản nhập sẵn (có nhập sai xen kẽ) trên bản sao của `data/`, kiểm tra màn hình và tệp đã lưu |
 
 Khi một bộ test qua hết, chương trình in `TAT CA TEST ... DEU QUA`. Khi có test sai, chương trình in `LOI (dong X): ...` kèm dòng bị lỗi trong file test.
 
-Kết quả gần nhất: **5/5 bộ test đều qua**, không có cảnh báo khi biên dịch với `-Wall -Wextra -pedantic`, và không có lỗi khi chạy với AddressSanitizer/UBSan.
+Kết quả gần nhất: **7/7 bộ test đều qua**, không có cảnh báo khi biên dịch với `-Wall -Wextra -pedantic`, và không có lỗi khi chạy với AddressSanitizer/UBSan.
 
 ## Định dạng tệp dữ liệu
 
@@ -100,13 +112,13 @@ Chèn rồi tìm lại n mã vạch theo thứ tự ngẫu nhiên (trích `ketqu
 
 | n | m | Thời gian chèn (ms) | Thời gian tìm (ms) | Số nút truy xuất TB/lần tìm | Chiều cao | Số nút |
 |---:|---:|---:|---:|---:|---:|---:|
-| 1.000 | 3 | 0,26 | 0,23 | 7,27 | 8 | 734 |
-| 1.000 | 10 | 0,23 | 0,21 | 3,84 | 4 | 164 |
-| 10.000 | 3 | 4,58 | 3,38 | 10,26 | 11 | 7.449 |
-| 10.000 | 10 | 4,31 | 2,98 | 4,84 | 5 | 1.635 |
-| 100.000 | 3 | 107,58 | 98,22 | 13,25 | 14 | 74.673 |
-| 100.000 | 5 | 78,38 | 73,06 | 8,63 | 9 | 36.930 |
-| 100.000 | 10 | 65,53 | 61,63 | 5,84 | 6 | 16.358 |
+| 1.000 | 3 | 0,28 | 0,27 | 7,27 | 8 | 734 |
+| 1.000 | 10 | 0,18 | 0,15 | 3,84 | 4 | 164 |
+| 10.000 | 3 | 3,90 | 3,16 | 10,26 | 11 | 7.449 |
+| 10.000 | 10 | 3,12 | 2,52 | 4,84 | 5 | 1.635 |
+| 100.000 | 3 | 118,23 | 107,99 | 13,25 | 14 | 74.673 |
+| 100.000 | 5 | 93,54 | 85,94 | 8,63 | 9 | 36.930 |
+| 100.000 | 10 | 62,09 | 62,15 | 5,84 | 6 | 16.358 |
 
 Nhận xét: khi tăng bậc m, cây thấp hơn và số nút phải truy xuất mỗi lần tìm giảm rõ rệt. Ví dụ với 100.000 khóa, chiều cao giảm từ 14 xuống 6 khi m tăng từ 3 lên 10. Chiều cao tăng theo log n, đúng với lý thuyết. Thời gian đo phụ thuộc vào máy chạy.
 
@@ -114,6 +126,8 @@ Nhận xét: khi tăng bậc m, cây thấp hơn và số nút phải truy xuấ
 
 - [x] B-Tree, LotQueue, Phiếu, Inventory, Sort, Report, Date, DataGen, Benchmark
 - [x] Bộ kiểm thử cho từng module
-- [ ] Hàm đọc/ghi tệp trong `FileIO.cpp` (`docDuLieu`, `ghiDuLieu`, ...). Hiện mới có phần quy đổi mã lô/mã phiếu.
-- [ ] `Validate.cpp` (nhập liệu có kiểm tra)
-- [ ] Menu console trong `main.cpp`
+- [x] Hàm đọc/ghi tệp trong `FileIO.cpp` (`docDuLieu`, `ghiDuLieu`, ...)
+- [x] `Validate.cpp` (nhập liệu có kiểm tra)
+- [x] Menu console trong `main.cpp`
+- [x] Báo cáo LaTeX (`baocao/`)
+- [ ] Slide thuyết trình

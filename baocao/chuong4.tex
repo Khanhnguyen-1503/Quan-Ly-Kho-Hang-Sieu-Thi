@@ -1,0 +1,379 @@
+% =============================================================================
+\chapter{Cài đặt và kiểm thử}\label{chap:caidat}
+% =============================================================================
+
+\section{Môi trường và cách biên dịch}
+
+Chương trình viết bằng C++17, biên dịch bằng \code{g++} 13.3 với các cờ \code{-std=c++17 -O2 -Wall -Wextra -pedantic}
+(không có cảnh báo nào). Mã nguồn không phụ thuộc hệ điều hành và biên dịch được bằng MinGW trên Windows.
+Tệp \code{Makefile} cung cấp các lệnh:
+
+\begin{lstlisting}[language=bash,caption={Các lệnh biên dịch và chạy},label=lst:make]
+make              # bien dich chuong trinh chinh ./quanlykho
+make run          # chay menu voi du lieu trong data/
+make test         # bien dich va chay toan bo test
+make bench        # thuc nghiem B-Tree, ghi ketqua/ketqua_btree.csv
+./quanlykho data 3        # tham so: thu muc du lieu, bac B-Tree (mac dinh: data 5)
+\end{lstlisting}
+
+\section{Cấu trúc mã nguồn}
+
+\begin{table}[htbp]
+\centering\small
+\caption{Các tệp mã nguồn (số dòng, kể cả chú thích)}
+\label{tab:tep_nguon}
+\begin{tabularx}{\linewidth}{@{}l r Y l@{}}
+\toprule
+\textbf{Mô-đun} & \textbf{Dòng} & \textbf{Nội dung chính} & \textbf{Phụ trách} \\
+\midrule
+\code{Types.h} & 59 & struct dùng chung, \code{enum KetQua} & Cả nhóm \\
+\code{BTree.h/.cpp} & 363 & tìm, chèn/tách, xóa/mượn/gộp, duyệt, in cây & \TVa \\
+\code{Benchmark.h/.cpp} & 160 & thực nghiệm $m = 3, 5, 10$, ghi CSV & \TVa, \TVd \\
+\code{LotQueue.h/.cpp} & 90 & hàng đợi lô (DSLK) & \TVb \\
+\code{Phieu.h/.cpp} & 111 & danh sách phiếu (DSLK), lọc theo ngày & \TVb \\
+\code{Inventory.h/.cpp} & 239 & thêm/sửa/xóa mặt hàng, nhập kho, xuất kho FIFO & \TVb \\
+\code{Sort.h/.cpp} & 135 & mảng động, Merge Sort, các tiêu chí sắp xếp & \TVc \\
+\code{Report.h/.cpp} & 281 & tìm kiếm, cảnh báo, báo cáo, in bảng & \TVc \\
+\code{Date.h/.cpp} & 118 & kiểm tra, quy đổi, cộng/trừ/so sánh ngày & \TVd \\
+\code{Validate.h/.cpp} & 154 & kiểm tra chuỗi, nhập có kiểm tra & \TVd \\
+\code{FileIO.h/.cpp} & 329 & quy đổi mã, đọc/ghi ba tệp & \TVd \\
+\code{DataGen.h/.cpp} & 139 & sinh dữ liệu mẫu và dữ liệu lớn & \TVd \\
+\code{main.cpp} & 360 & menu 18 chức năng & \TVd \\
+\midrule
+\textbf{Tổng mã nguồn} & \textbf{2538} & & \\
+Mã kiểm thử (\code{tests/}) & 1744 & 7 bộ kiểm thử & \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Giao diện chương trình}\label{sec:manhinh}
+
+Chương trình chạy trên cửa sổ dòng lệnh. Khi khởi động, chương trình đọc ba tệp dữ liệu và hiện menu chính
+(Hình~\ref{fig:menu}); dòng thứ hai cho biết số mặt hàng, lô, phiếu, bậc và chiều cao B-Tree, thư mục dữ liệu và
+trạng thái chưa lưu. Các hình trong mục này là kết quả chạy thật của chương trình trên bộ dữ liệu mẫu
+\code{data/} ngày 26/11/2026; phần người dùng gõ được terminal hiển thị lại sau dấu nhắc. Để gọn, menu chỉ được
+in ở hình đầu tiên.
+
+\begin{figure}[htbp]
+\begin{manhinh}[./quanlykho data]
+Dang doc du lieu tu data/ ...
+Da nap 35 mat hang, 65 lo, 99 phieu.
+
+==================== QUAN LY KHO HANG SIEU THI ====================
+ Kho: 35 mat hang, 65 lo, 99 phieu | B-Tree m = 5, cao 3 | data/
+ MAT HANG   1. Them   2. Sua   3. Xoa   4. Xem chi tiet theo ma vach
+            5. Tim theo ten   6. Liet ke theo nhom
+ NHAP/XUAT  7. Nhap kho   8. Xuat kho (FIFO)   9. Danh sach phieu
+ BAO CAO    10. Ton duoi nguong   11. Sap het han (7 ngay)
+            12. Gia tri ton theo nhom   13. Top 10 ban chay trong thang
+ B-TREE     14. Xem cay   15. Bat/tat in cay khi tach/gop   16. Thuc nghiem m = 3, 5, 10
+ DU LIEU    17. Sinh du lieu mau   18. Luu   0. Luu va thoat
+===================================================================
+Chon: 99
+  -> Loi: phai nam trong [0, 18]. Nhap lai.
+Chon: abc
+  -> Loi: phai la so nguyen. Nhap lai.
+\end{manhinh}
+\caption{Khởi động và menu chính; nhập lựa chọn sai thì được hỏi lại}
+\label{fig:menu}
+\end{figure}
+
+\paragraph{Xem chi tiết và xuất kho FIFO.} Mục 4 tìm mặt hàng qua B-Tree và cho biết số nút đã truy xuất.
+Mục 8 xuất 30 đơn vị: lô 4 (25 đơn vị) bị lấy hết và gỡ khỏi hàng đợi, 5 đơn vị còn lại lấy từ lô 5
+(Hình~\ref{fig:xuatkho}).
+
+\begin{figure}[htbp]
+\begin{manhinh}[Muc 4 va muc 8]
+Chon: 4
+Ma vach: 8930000000002
+---------------- THONG TIN MAT HANG ----------------
+Ma vach         : 8930000000002
+Ten mat hang    : Mi goi Loai 2
+Nhom hang       : Thuc pham kho
+Tong ton kho    : 64
+So lo hien co   : 2
+Chi tiet cac lo hang (FIFO - Cu nhat den moi nhat):
+  Ma Lo   Ngay Nhap     Han Su Dung   So Luong  Gia Nhap
+  4       09/11/2026    15/04/2027    25        82500.00
+  5       16/11/2026    18/04/2027    39        82500.00
+----------------------------------------------------
+(B-Tree: tim qua 3 nut, cay cao 3)
+
+Chon: 8
+Ma vach: 8930000000002
+   ... (in lai thong tin mat hang nhu tren) ...
+So luong xuat (1 - 64): 30
+Ngay xuat dd/mm/yyyy (Enter = 26/11/2026):
+Da tao phieu xuat PX00100 (lay tu lo cu nhat truoc).
+   ...
+Tong ton kho    : 34
+So lo hien co   : 1
+Chi tiet cac lo hang (FIFO - Cu nhat den moi nhat):
+  Ma Lo   Ngay Nhap     Han Su Dung   So Luong  Gia Nhap
+  5       16/11/2026    18/04/2027    34        82500.00
+----------------------------------------------------
+\end{manhinh}
+\caption{Xem chi tiết mặt hàng (kèm số nút B-Tree truy xuất) và xuất kho theo FIFO}
+\label{fig:xuatkho}
+\end{figure}
+
+\paragraph{Nhập kho với kiểm tra dữ liệu.} Mọi giá trị nhập đều được kiểm tra kiểu và miền; nhập sai thì báo
+lý do cụ thể và hỏi lại, bấm Enter ở ô ngày để lấy ngày hôm nay (Hình~\ref{fig:nhapkho}).
+
+\begin{figure}[htbp]
+\begin{manhinh}[Muc 7 - Nhap kho]
+Chon: 7
+Ma vach: 8930000000002
+Mi goi Loai 2 - ton hien tai: 34
+So luong nhap: 0
+  -> Loi: phai nam trong [1, 1000000]. Nhap lai.
+So luong nhap: 20
+Gia nhap: 85000
+Ngay nhap dd/mm/yyyy (Enter = 26/11/2026):
+Han su dung dd/mm/yyyy: 31/02/2027
+  -> Loi: ngay khong hop le (dd/mm/yyyy, nam 1900-2100). Nhap lai.
+Han su dung dd/mm/yyyy: 01/10/2026
+  -> Loi: HSD khong duoc truoc ngay nhap 26/11/2026. Nhap lai.
+Han su dung dd/mm/yyyy: 15/06/2027
+Da tao phieu nhap PN00101, lo LO00072. Ton moi: 54
+\end{manhinh}
+\caption{Nhập kho: số lượng ngoài miền, ngày không tồn tại, HSD trước ngày nhập đều bị từ chối}
+\label{fig:nhapkho}
+\end{figure}
+
+\paragraph{Cảnh báo và báo cáo.} Hình~\ref{fig:canhbao} là hai cảnh báo: tồn dưới ngưỡng (sắp theo tồn tăng
+dần) và lô hết hạn trong 7 ngày (sắp theo HSD, gồm cả lô đã quá hạn mà vẫn còn hàng). Hình~\ref{fig:baocao}
+là báo cáo giá trị tồn theo nhóm và top 10 bán chạy tháng 11/2026. Mì gói Loại 2 đứng đầu với
+$51 + 30 = 81$ đơn vị: 51 từ phiếu \code{PX00006} trong dữ liệu mẫu và 30 từ lần xuất ở Hình~\ref{fig:xuatkho}.
+
+\begin{figure}[htbp]
+\begin{manhinh}[Muc 10 va muc 11]
+Chon: 10
+Mat hang co ton kho DUOI nguong canh bao:
+STT  Ma vach        Ten                       Nhom                 Don gia     Ton  Nguong
+------------------------------------------------------------------------------------------
+1    8930000000018  Gao Loai 18               Thuc pham kho          55000      14      22
+2    8930000000021  Ca phe Loai 21            Do uong               105000      16      20
+Tong: 2 mat hang
+
+Chon: 11
+Lo con hang da het han hoac het han trong 7 ngay (tinh tu 26/11/2026):
+STT  Ma vach        Ten                       Ma lo   HSD         Con lai             SL
+----------------------------------------------------------------------------------------
+1    8930000000030  Sua tuoi Loai 30          60      23/11/2026  DA HET HAN          28
+2    8930000000025  Dau an Loai 25            49      24/11/2026  DA HET HAN          28
+3    8930000000020  Tra xanh Loai 20          39      25/11/2026  DA HET HAN          21
+4    8930000000015  Sua tuoi Loai 15          30      26/11/2026  0 ngay              31
+5    8930000000010  Dau an Loai 10            19      27/11/2026  1 ngay               8
+\end{manhinh}
+\caption{Cảnh báo tồn dưới ngưỡng và cảnh báo hạn sử dụng}
+\label{fig:canhbao}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{manhinh}[Muc 12 va muc 13]
+Chon: 12
+Gia tri ton kho theo nhom (tinh theo gia nhap tung lo):
+Nhom                   So MH    Tong ton       Gia tri ton
+----------------------------------------------------------
+Thuc pham tuoi             5         265          34916250
+Hoa my pham                4         263          32298750
+Do uong                    8         351          29936250
+Do gia dung                4         242          23977500
+Thuc pham kho              6         278          19647500
+Banh keo                   4         247          15311250
+Gia vi                     4         134           4837500
+----------------------------------------------------------
+Tong gia tri ton (theo gia nhap)                 160925000
+
+Chon: 13
+Thang (Enter = 11):
+Nam (Enter = 2026):
+Top 10 ban chay thang 11/2026 (theo phieu xuat):
+Hang  Ma vach        Ten                       Nhom                SL ban
+-------------------------------------------------------------------------
+1     8930000000002  Mi goi Loai 2             Thuc pham kho           81
+2     8930000000005  Tra xanh Loai 5           Do uong                 54
+3     8930000000014  Nuoc rua chen Loai 14     Do gia dung             49
+4     8930000000032  Mi goi Loai 32            Thuc pham kho           49
+5     8930000000035  Tra xanh Loai 35          Do uong                 43
+6     8930000000023  Keo deo Loai 23           Banh keo                39
+7     8930000000004  Nuoc ngot Loai 4          Do uong                 33
+8     8930000000017  Mi goi Loai 17            Thuc pham kho           31
+9     8930000000010  Dau an Loai 10            Gia vi                  30
+10    8930000000008  Keo deo Loai 8            Banh keo                24
+\end{manhinh}
+\caption{Báo cáo giá trị tồn theo nhóm và top 10 bán chạy trong tháng}
+\label{fig:baocao}
+\end{figure}
+
+\paragraph{In cây khi tách/gộp (nâng cao).} Mục 15 bật chế độ in cây. Hình~\ref{fig:intachgop} chạy với kho rỗng
+và B-Tree bậc 3: mặt hàng thứ ba làm lá tràn và bị tách; xóa một mặt hàng làm lá rỗng và hai nút gộp lại,
+cây thấp đi một mức.
+
+\begin{figure}[htbp]
+\begin{manhinh}[./quanlykho nho 3]
+Chon: 15
+In cay sau moi lan tach/muon/gop nut: BAT
+Chon: 1
+Ma vach (8 hoac 13 chu so): 00000080
+Ten mat hang: Nuoc ngot
+   ... (da them 00000050 va 00000020 truoc do) ...
+  Tach nut: day 00000050 len, [00000020] | [00000080]
+Muc 0: [00000050]
+Muc 1: [00000020] [00000080]
+Thanh cong.
+
+Chon: 3
+Ma vach: 00000080
+   ... (thong tin mat hang) ...
+Xac nhan xoa mat hang nay? (c/k): c
+  Gop nut voi khoa 00000050 -> [00000020 00000050]
+Muc 0: [00000020 00000050]
+Thanh cong.
+\end{manhinh}
+\caption{In cây sau mỗi lần tách và gộp nút (B-Tree bậc 3)}
+\label{fig:intachgop}
+\end{figure}
+
+\paragraph{Kiểm tra dữ liệu khi đọc tệp.} Nếu tệp dữ liệu có dòng sai (sửa tay hoặc hỏng), chương trình bỏ qua
+dòng đó, báo vị trí và lý do, và vẫn nạp phần dữ liệu đúng (Hình~\ref{fig:doctep}).
+
+\begin{figure}[htbp]
+\begin{manhinh}[./quanlykho loi]
+Dang doc du lieu tu loi/ ...
+  [mathang.txt dong 2] ma vach phai co 8 hoac 13 chu so -> bo qua: 893000000002|Ma 12 so|Do uong|5000|5
+  [mathang.txt dong 3] trung ma vach -> bo qua: 8930000000001|Trung ma|Do uong|5000|5
+  [mathang.txt dong 4] don gia sai -> bo qua: 8930000000003|Gia am|Do uong|-500|5
+  [mathang.txt dong 5] don gia sai -> bo qua: 8930000000004|Keo deo|Banh keo|abc|5
+  [lo.txt dong 2] ngay sai -> bo qua: 8930000000001|LO00002|30/02/2026|01/12/2026|5|20000
+  [lo.txt dong 3] HSD truoc ngay nhap -> bo qua: 8930000000001|LO00003|10/11/2026|01/11/2026|5|20000
+  [lo.txt dong 4] ma vach khong co trong mathang.txt -> bo qua: 8930000000009|LO00004|...
+  [phieu.txt dong 2] ma phieu sai (PN/PX + so, khop loai) -> bo qua: PX00002|NHAP|05/11/2026|...
+Mot so dong loi da bi bo qua (xem thong bao o tren).
+Da nap 1 mat hang, 1 lo, 1 phieu.
+\end{manhinh}
+\caption{Đọc tệp có dòng lỗi: mã vạch sai, trùng mã, sai kiểu, sai miền, sai tiền tố mã phiếu}
+\label{fig:doctep}
+\end{figure}
+
+\section{Chiến lược kiểm thử}
+
+Mỗi mô-đun có một chương trình kiểm thử tự động trong thư mục \code{tests/}; lệnh \code{make test} chạy tất cả.
+Các test gồm ba loại theo yêu cầu: \textbf{bình thường}, \textbf{biên} và \textbf{dữ liệu sai}. Ngoài các ca
+cụ thể, nhóm dùng thêm các kỹ thuật:
+
+\begin{itemize}
+  \item \textbf{Kiểm tra bất biến B-Tree} sau \emph{mỗi} thao tác chèn/xóa: số khóa mỗi nút trong
+        $[t-1, m-1]$, khóa tăng dần và nằm đúng khoảng của cha, mọi lá cùng độ sâu, tổng số khóa bằng \code{size}.
+  \item \textbf{Kiểm thử ngẫu nhiên đối chiếu mô hình}: 20\,000 thao tác thêm/nhập/xuất/xóa ngẫu nhiên trên
+        2\,000 mã vạch với B-Tree bậc 3; sau mỗi bước so danh sách lô và tồn kho với một mô hình FIFO đơn giản viết
+        bằng mảng.
+  \item \textbf{Đọc rồi ghi lại}: đọc bộ dữ liệu rồi ghi ra phải được ba tệp giống hệt từng byte; thao tác, lưu,
+        đọc lại (với bậc B-Tree khác) phải ra đúng trạng thái cũ.
+  \item \textbf{Chạy menu bằng kịch bản}: \code{tests/test\_menu.sh} đưa sẵn chuỗi lựa chọn (kể cả nhập sai) vào
+        chương trình thật trên bản sao của \code{data/}, rồi kiểm tra 36 điều kiện: 29 trên màn hình, 7 trên tệp đã lưu và mã thoát.
+  \item \textbf{Kiểm tra lỗi bộ nhớ và rò rỉ}: toàn bộ test được biên dịch lại với AddressSanitizer,
+        LeakSanitizer và UndefinedBehaviorSanitizer (\code{-fsanitize=address,undefined}); công cụ báo lỗi ngay khi
+        truy cập vùng nhớ sai, giải phóng hai lần hoặc còn vùng nhớ chưa giải phóng lúc thoát.
+\end{itemize}
+
+\section{Các ca kiểm thử}
+
+Ký hiệu loại: \textbf{BT} -- bình thường, \textbf{Biên} -- giá trị biên, \textbf{Sai} -- dữ liệu sai.
+Tất cả các ca dưới đây đều đạt (\ok).
+
+\begingroup\small
+\begin{longtable}{@{}c c >{\raggedright\arraybackslash}p{6.2cm} >{\raggedright\arraybackslash}p{5.6cm} c@{}}
+\caption{Các ca kiểm thử}\label{tab:testcase}\\
+\toprule
+\textbf{STT} & \textbf{Loại} & \textbf{Đầu vào} & \textbf{Kết quả mong đợi} & \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{STT} & \textbf{Loại} & \textbf{Đầu vào} & \textbf{Kết quả mong đợi} & \\
+\midrule
+\endhead
+\multicolumn{5}{@{}l}{\textit{B-Tree (\code{test\_btree})}} \\
+1 & BT & Chèn 2\,000 khóa theo thứ tự ngẫu nhiên, $m \in \{3,4,5,10\}$ & Bất biến đúng sau mỗi lần chèn; tìm thấy mọi khóa & \ok \\
+2 & BT & Duyệt cây sau khi chèn & Đủ 2\,000 khóa, tăng dần & \ok \\
+3 & Biên & Chèn 500 khóa tăng dần rồi xóa giảm dần & Bất biến đúng sau mỗi bước; cây rỗng & \ok \\
+4 & Biên & Tìm, xóa, chèn \code{nullptr} trên cây rỗng & Trả \code{nullptr}/\textbf{sai}; chiều cao 0 & \ok \\
+5 & Sai & Chèn mã vạch đã có & Trả \textbf{sai}, cây không đổi & \ok \\
+6 & Sai & Xóa khóa đã xóa & Trả \code{nullptr} & \ok \\
+7 & BT & $10^5$ khóa mỗi bậc: chèn, tìm, xóa một nửa, xóa hết & Khóa đã xóa không còn, khóa còn lại tìm được; cây rỗng & \ok \\
+8 & BT & Demo $m=3$: chèn 10 khóa, xóa 5 khóa & Đúng các bước ở Hình~\ref{fig:chen}, \ref{fig:xoa} & \ok \\
+\midrule
+\multicolumn{5}{@{}l}{\textit{Hàng đợi lô, phiếu, nhập/xuất kho (\code{test\_kho})}} \\
+9 & BT & Nhập 3 lô 10, 20, 30 & Tồn 60; 3 lô đúng thứ tự; mã phiếu 1, 2, 3 & \ok \\
+10 & BT & Xuất 15 khi các lô là $[9, 20, 30, 1]$ & Lô 1 bị gỡ, lô 2 còn 14, tồn 45 & \ok \\
+11 & Biên & Xuất đúng bằng số lượng lô đầu (14) & Lô bị gỡ, \code{front} sang lô kế & \ok \\
+12 & Biên & Xuất hết sạch; xuất tiếp 1 & Hàng đợi rỗng, \code{front = rear = nullptr}; \code{KQ\_KHONG\_DU\_HANG} & \ok \\
+13 & Sai & Xuất 61 khi tồn 60 & \code{KQ\_KHONG\_DU\_HANG}; tồn, lô, phiếu không đổi & \ok \\
+14 & Sai & Nhập số lượng 0/âm, giá âm, HSD trước ngày nhập, ngày 31/11, 30/02, năm 1899, 2101 & \code{KQ\_DU\_LIEU\_SAI}; không tạo lô, phiếu & \ok \\
+15 & Sai & Thêm mặt hàng: 7 dạng mã vạch sai, tên/nhóm rỗng, giá âm/NaN/$\infty$, ngưỡng âm & \code{KQ\_DU\_LIEU\_SAI} & \ok \\
+16 & Sai & Thêm mã vạch trùng & \code{KQ\_TRUNG\_MA} & \ok \\
+17 & Biên & Xóa mặt hàng còn tồn; xóa kèm tồn kho & \code{KQ\_CON\_TON\_KHO}; sau đó \code{KQ\_OK} & \ok \\
+18 & Biên & Nhập thêm \code{INT\_MAX} đơn vị & \code{KQ\_DU\_LIEU\_SAI} (chống tràn số) & \ok \\
+19 & BT & \code{dspThemCoSan} với mã 50 rồi mã 7 & Mã kế tiếp 51, không giảm & \ok \\
+20 & BT & 20\,000 thao tác ngẫu nhiên, đối chiếu mô hình FIFO & Lô và tồn kho khớp sau mỗi bước & \ok \\
+\midrule
+\multicolumn{5}{@{}l}{\textit{Tìm kiếm, sắp xếp, báo cáo (\code{test\_report})}} \\
+21 & BT & Merge Sort mảng $n = 0, 1, 2, 3, 7, 16, 100, 10^4$ có khóa trùng & Đúng thứ tự, ổn định & \ok \\
+22 & BT & Tìm \code{"sua"}, \code{"SUA T"} & Không phân biệt hoa thường, sắp theo tên & \ok \\
+23 & Biên & Tìm \code{"xyz"}; từ khóa rỗng & Rỗng; tất cả mặt hàng & \ok \\
+24 & Biên & Nhóm \code{"do uong"} khi có \code{"Do uong"} và \code{"DO UONG"} & Gộp thành một nhóm & \ok \\
+25 & Biên & Tồn đúng bằng ngưỡng; ngưỡng 0 & Không cảnh báo & \ok \\
+26 & Biên & Lô có HSD còn $-1, 0, 3, 7, 8$ ngày & Lấy 4 lô $-1..7$, sắp theo HSD; không kèm hết hạn: 3 lô & \ok \\
+27 & BT & Giá trị tồn theo nhóm, tính tay & 290\,000; 146\,000; 0 & \ok \\
+28 & Biên & Top bán chạy: phiếu tháng khác, phiếu nhập, gọi hai lần, $k = 0$, $k = 2$ & Chỉ tính phiếu xuất trong tháng; không cộng dồn & \ok \\
+29 & Sai & Phiếu xuất của mặt hàng đã xóa & Bị bỏ qua & \ok \\
+30 & BT & $10^5$ mặt hàng: tìm \code{"pham 99"}, đếm lô sắp hết hạn & 1\,111 và 11\,669 (đúng công thức) & \ok \\
+\midrule
+\multicolumn{5}{@{}l}{\textit{Ngày và kiểm tra nhập (\code{test\_date}, \code{test\_fileio})}} \\
+31 & BT & Mọi ngày 01/01/1900 -- 31/12/2100 & 73\,414 ngày; đổi qua lại, định dạng, \code{congNgay} đúng & \ok \\
+32 & Biên & Năm nhuận 2000, 2024; không nhuận 1900, 2026 & 29/02 hợp lệ đúng năm & \ok \\
+33 & Sai & 17 chuỗi ngày sai: \code{29/02/2025}, \code{31/04/2026}, \code{01-01-2026}, \code{01/01/2026x}, \ldots & Từ chối, không ghi đè kết quả & \ok \\
+34 & Sai & Số: \code{"2147483648"}, \code{"1.5"}, \code{"0x10"}, \code{"1,5"}, \code{"nan"}, \code{"1e999"} & Từ chối & \ok \\
+35 & Sai & Nhập \code{abc}, \code{500}, \code{-1}, \code{42} với miền $[0, 100]$ & Hỏi lại 3 lần, nhận 42 & \ok \\
+36 & Biên & Hết dữ liệu nhập giữa chừng & Lưu dữ liệu và thoát, không lặp vô hạn & \ok \\
+\midrule
+\multicolumn{5}{@{}l}{\textit{Đọc/ghi tệp (\code{test\_fileio}, \code{test\_dulieu}, \code{test\_menu.sh})}} \\
+37 & BT & Đọc \code{data/} & 35 mặt hàng, 65 lô, 99 phiếu; tồn = tổng lô & \ok \\
+38 & BT & Đọc rồi ghi lại; $10^4$ mặt hàng & Ba tệp giống hệt từng byte & \ok \\
+39 & BT & Thêm, nhập, xuất, xóa; lưu; đọc lại với bậc khác & Trạng thái giống hệt; giữ số thập phân & \ok \\
+40 & Sai & Tệp 17 dòng lỗi (sai số trường, mã, ngày, FIFO, mã phiếu trùng\ldots) & Bỏ qua đúng 17 dòng, báo số dòng & \ok \\
+41 & Biên & Tệp CRLF, dòng trống; thiếu \code{lo.txt}; thư mục không tồn tại & Đọc bình thường; vẫn nạp mặt hàng; kho rỗng & \ok \\
+42 & BT & Tính nhất quán \code{data/}: lô khớp phiếu, thứ tự FIFO, mã lô/phiếu & 0 lỗi, 0 cảnh báo & \ok \\
+43 & BT & Kịch bản menu 18 chức năng có nhập sai xen kẽ & 36 điều kiện trên màn hình, tệp và mã thoát đều đúng & \ok \\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\section{Kết quả chạy kiểm thử và kiểm tra bộ nhớ}
+
+Hình~\ref{fig:maketest} trích các dòng tổng kết khi chạy \code{make test}. Toàn bộ test cũng được chạy lại với
+AddressSanitizer, LeakSanitizer và UndefinedBehaviorSanitizer (lệnh dưới đây): không có báo lỗi truy cập
+bộ nhớ, hành vi không xác định hay rò rỉ bộ nhớ nào.
+\begin{lstlisting}[language=bash,numbers=none]
+make clean test CXXFLAGS="-std=c++17 -g -O1 -fsanitize=address,undefined"
+\end{lstlisting} Khi thoát, chương trình gọi \code{khoGiaiPhong}: duyệt cây để giải
+phóng từng mặt hàng cùng các lô, rồi giải phóng các nút cây và danh sách phiếu.
+
+\begin{figure}[htbp]
+\begin{manhinh}[make test (trich dong tong ket)]
+TAT CA TEST DEU QUA
+TAT CA TEST DATE DEU QUA
+  con 1892 mat hang, 9015 phieu, cay cao 9
+TAT CA TEST KHO DEU QUA
+  tim 'pham 99': 1111, ton thap: 46667, sap het han: 11669, nhom: 5, top: 10 (131 ms)
+TAT CA TEST REPORT DEU QUA
+  doc 56 ms, ghi 38 ms (28000 phieu)
+TAT CA TEST FILEIO DEU QUA
+Ham quy doi maLo/maPhieu: dung
+Ket qua: 0 LOI, 0 CANH BAO
+TAT CA TEST MENU DEU QUA
+\end{manhinh}
+\caption{Kết quả \code{make test}}
+\label{fig:maketest}
+\end{figure}

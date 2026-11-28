@@ -25,12 +25,23 @@ std::string taoMaPhieu(int maPhieu, LoaiPhieu loai);
 bool        tachLoaiPhieu(const std::string& s, LoaiPhieu& loai);
 const char* tenLoaiPhieu(LoaiPhieu loai);                                     // "NHAP" / "XUAT"
 
+// ---- Doc / ghi tep ----------------------------------------------------------
+// Doc: dong sai bi bo qua va bao ra std::cerr (ten tep, so dong, ly do).
+//   KQ_OK: doc het | KQ_DU_LIEU_SAI: co dong bi bo qua | KQ_LOI_TEP: khong mo duoc tep.
+//   Chap nhan xuong dong LF va CRLF; bo qua dong trong.
+// Ghi: ghi ra <tep>.tmp roi moi thay tep cu, loi giua chung thi tep cu van con.
 KetQua docMatHang(Kho& kho, const std::string& tep);
-KetQua docLo(Kho& kho, const std::string& tep);       // doc sau mathang; cap nhat tonKho, maLoKeTiep
+// Doc sau mathang. Lo cua moi mat hang phai theo thu tu nhap (cu -> moi) = thu tu FIFO.
+// tonKho = tong soLuong cac lo; maLoKeTiep = maLo lon nhat + 1.
+KetQua docLo(Kho& kho, const std::string& tep);
+// maPhieu phai tang dan. Khong bat buoc maVach con trong kho (phieu cua mat hang da xoa
+// van la lich su). maPhieuKeTiep = maPhieu lon nhat + 1.
 KetQua docPhieu(Kho& kho, const std::string& tep);
-KetQua ghiMatHang(const Kho& kho, const std::string& tep);
-KetQua ghiLo(const Kho& kho, const std::string& tep);
+KetQua ghiMatHang(const Kho& kho, const std::string& tep);   // theo thu tu ma vach
+KetQua ghiLo(const Kho& kho, const std::string& tep);        // moi mat hang: front -> rear
 KetQua ghiPhieu(const Kho& kho, const std::string& tep);
 
+// thuMuc chua mathang.txt, lo.txt, phieu.txt. Kho phai rong (vua khoInit).
+// Thieu mathang.txt -> KQ_LOI_TEP; thieu lo.txt / phieu.txt -> coi nhu rong, KQ_DU_LIEU_SAI.
 KetQua docDuLieu(Kho& kho, const std::string& thuMuc);        // goi khi khoi dong
 KetQua ghiDuLieu(const Kho& kho, const std::string& thuMuc);  // goi khi thoat
