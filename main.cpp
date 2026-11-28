@@ -2,6 +2,7 @@
 // Menu chuong trinh quan ly kho hang sieu thi.
 // Chay: ./quanlykho [thuMucDuLieu] [bacBTree]      mac dinh: data 5
 // Doc 3 tep khi khoi dong, ghi lai khi thoat (muc 0) hoac khi chon "Luu" (muc 18).
+#include <fstream>
 #include <iostream>
 #include <string>
 #include "BTree.h"
@@ -21,6 +22,9 @@ Kho g_kho;
 std::string g_thuMuc = "data";
 int g_bac = 5;
 bool g_chuaLuu = false;
+// Lan luu dau tien moi phien: tep cu duoc doi ten thanh .bak (khong bi ghi de mat), nen .bak
+// luon la du lieu luc mo chuong trinh, ke ca cac dong loi da bi bo qua khi doc.
+bool g_daSaoLuu = false;
 
 const char* moTa(KetQua kq) {
     switch (kq) {
@@ -55,7 +59,9 @@ void napDuLieu() {
     if (kq == KQ_LOI_TEP)
         std::cout << "Khong mo duoc " << tep("mathang.txt") << ". Bat dau voi kho rong.\n";
     else if (kq == KQ_DU_LIEU_SAI)
-        std::cout << "Mot so dong loi da bi bo qua (xem thong bao o tren).\n";
+        std::cout << "Mot so dong loi da bi bo qua (xem thong bao o tren).\n"
+                  << "Luu y: cac dong nay se KHONG duoc ghi lai. Khi luu, tep goc duoc giu nguyen o "
+                  << g_thuMuc << "/*.txt.bak de sua tay neu can.\n";
     std::cout << "Da nap " << g_kho.cay.size << " mat hang, " << soLo() << " lo, " << g_kho.phieu.count
               << " phieu.\n";
     g_kho.cay.inKhiTachGop = inCay;   // bat sau khi nap de khong in hang tram lan tach
@@ -63,9 +69,14 @@ void napDuLieu() {
 }
 
 bool luu() {
-    KetQua kq = ghiDuLieu(g_kho, g_thuMuc);
+    KetQua kq = ghiDuLieu(g_kho, g_thuMuc, !g_daSaoLuu);
     if (kq == KQ_OK) {
         std::cout << "Da luu vao " << g_thuMuc << "/ (mathang.txt, lo.txt, phieu.txt).\n";
+        if (!g_daSaoLuu) {
+            std::ifstream bak(tep("mathang.txt.bak").c_str());
+            if (bak) std::cout << "Ban luc mo chuong trinh duoc giu o " << g_thuMuc << "/*.txt.bak.\n";
+            g_daSaoLuu = true;
+        }
         g_chuaLuu = false;
         return true;
     }
@@ -285,12 +296,18 @@ void thucNghiem() {
 
 void sinhDuLieu() {
     std::cout << "Se GHI DE mathang.txt, lo.txt, phieu.txt trong " << g_thuMuc
-              << "/ roi nap lai kho. Thay doi chua luu se mat.\n";
+              << "/ roi nap lai kho (du lieu cu doi ten thanh .bak). Thay doi chua luu se mat.\n";
     if (!nhapCoKhong("Tiep tuc? (c/k): ")) return;
     int n = nhapSoNguyen("So mat hang (30 - 100000): ", 30, 100000);
+    if (saoLuuDuLieu(g_thuMuc) != KQ_OK) {
+        std::cout << "LOI: khong sao luu duoc du lieu cu, huy sinh du lieu.\n";
+        return;
+    }
     sinhDuLieuMau(n, tep("mathang.txt"), tep("lo.txt"), tep("phieu.txt"));
     khoGiaiPhong(g_kho);
     napDuLieu();
+    std::cout << "Du lieu cu duoc giu o " << g_thuMuc << "/*.txt.bak.\n";
+    g_daSaoLuu = true;   // khong de lan luu sau ghi de .bak (dang chua du lieu cu)
 }
 
 void inMenu() {

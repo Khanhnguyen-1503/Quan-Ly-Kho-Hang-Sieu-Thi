@@ -411,7 +411,9 @@ Dòng sai bị \emph{bỏ qua} và báo ra màn hình kèm tên tệp, số dòn
 
 Phiếu không bắt buộc mã vạch còn trong kho (phiếu của mặt hàng đã xóa vẫn là lịch sử), nhưng mã phiếu phải
 tăng dần -- vừa phát hiện trùng mã trong $O(1)$ mỗi dòng, vừa khớp với cách ghi. Khi ghi, mỗi tệp được ghi ra
-\code{<tệp>.tmp} trước rồi mới thay tệp cũ: nếu lỗi giữa chừng, dữ liệu cũ vẫn còn nguyên. Đọc $O(n\log n + L\log n + P)$,
+\code{<tệp>.tmp} trước rồi mới thay tệp cũ: nếu lỗi giữa chừng, dữ liệu cũ vẫn còn nguyên. Ở lần lưu đầu tiên
+mỗi phiên, tệp cũ không bị xóa mà đổi tên thành \code{<tệp>.bak}, nên các dòng lỗi bị bỏ qua khi đọc (cùng các lô
+của mặt hàng trên dòng đó) vẫn còn trong bản sao lưu để sửa tay. Đọc $O(n\log n + L\log n + P)$,
 ghi $O(n + L + P)$.
 
 % -----------------------------------------------------------------------------

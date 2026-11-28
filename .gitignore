@@ -22,3 +22,5 @@ baocao/*.fdb_latexmk
 baocao/*.xdv
 baocao/*.synctex.gz
 baocao/*.listing
+data/*.bak
+*.txt.bak

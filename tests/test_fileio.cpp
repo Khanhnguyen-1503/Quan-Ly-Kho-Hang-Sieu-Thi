@@ -50,7 +50,10 @@ static void ghiTep(const std::string& p, const std::string& noiDung) {
 }
 static void xoaTep3(const std::string& thuMuc) {
     const char* t[] = {"/mathang.txt", "/lo.txt", "/phieu.txt"};
-    for (const char* x : t) std::remove((thuMuc + x).c_str());
+    for (const char* x : t) {
+        std::remove((thuMuc + x).c_str());
+        std::remove((thuMuc + x + ".bak").c_str());
+    }
 }
 
 // Chay f voi cin lay tu chuoi, cout/cerr bi nuot; tra ve noi dung cout
@@ -306,6 +309,51 @@ static void testTepLoi() {
     xoaTep3(TAM);
 }
 
+static void testSaoLuu() {
+    std::printf("FileIO: sao luu .bak khi ghi de\n");
+    // Dong 2 cua mathang hong; lo cua mat hang do cung bi bo qua khi doc
+    const std::string mh = "11111111|Sua|Do uong|1000|1\n22222222|Hong|Do uong|1O00|1\n";
+    const std::string lo = "11111111|LO00001|01/11/2026|01/12/2026|5|500\n"
+                           "22222222|LO00002|01/11/2026|01/12/2026|7|700\n";
+    const std::string ph = "PN00001|NHAP|01/11/2026|11111111|5|500\nPN00002|NHAP|01/11/2026|22222222|7|700\n";
+    ghiTep(TAM + "/mathang.txt", mh);
+    ghiTep(TAM + "/lo.txt", lo);
+    ghiTep(TAM + "/phieu.txt", ph);
+    Kho kho;
+    khoInit(kho, 3);
+    KetQua kq = KQ_OK;
+    voiDauVao("", [&] { kq = docDuLieu(kho, TAM); });
+    KIEMTRA(kq == KQ_DU_LIEU_SAI && kho.cay.size == 1, "doc: bo qua dong hong va lo cua no");
+
+    // Lan luu dau (saoLuu): tep cu thanh .bak, nguyen ven ca dong hong va lo cua no
+    KIEMTRA(ghiDuLieu(kho, TAM, true) == KQ_OK, "ghi co sao luu");
+    KIEMTRA(docTep(TAM + "/mathang.txt.bak") == mh && docTep(TAM + "/lo.txt.bak") == lo &&
+            docTep(TAM + "/phieu.txt.bak") == ph, ".bak phai giong het tep luc doc");
+    KIEMTRA(docTep(TAM + "/mathang.txt").find("Hong") == std::string::npos &&
+            docTep(TAM + "/lo.txt").find("LO00002") == std::string::npos, "tep moi khong con dong hong");
+
+    // Lan luu sau trong cung phien (khong sao luu): .bak giu nguyen
+    themMatHang(kho, "33333333", "Moi", "Do uong", 1, 1);
+    KIEMTRA(ghiDuLieu(kho, TAM, false) == KQ_OK, "ghi lan 2");
+    KIEMTRA(docTep(TAM + "/mathang.txt.bak") == mh, "lan luu sau khong duoc ghi de .bak");
+    KIEMTRA(docTep(TAM + "/mathang.txt").find("33333333") != std::string::npos, "lan 2 van ghi du lieu moi");
+    khoGiaiPhong(kho);
+
+    // saoLuuDuLieu (truoc khi sinh du lieu moi): doi ten tep hien co thanh .bak
+    std::string truoc = docTep(TAM + "/mathang.txt");
+    KIEMTRA(saoLuuDuLieu(TAM) == KQ_OK, "saoLuuDuLieu");
+    KIEMTRA(docTep(TAM + "/mathang.txt.bak") == truoc && docTep(TAM + "/mathang.txt").empty(),
+            "saoLuuDuLieu doi ten tep thanh .bak");
+    // Chua co tep nao: sao luu va ghi co sao luu deu khong loi
+    xoaTep3(TAM);
+    KIEMTRA(saoLuuDuLieu(TAM) == KQ_OK, "sao luu khi chua co tep");
+    khoInit(kho, 3);
+    KIEMTRA(ghiDuLieu(kho, TAM, true) == KQ_OK && docTep(TAM + "/mathang.txt.bak").empty(),
+            "ghi co sao luu khi chua co tep cu");
+    khoGiaiPhong(kho);
+    xoaTep3(TAM);
+}
+
 static void testDuLieuLon() {
     const int N = 10000;
     std::printf("FileIO: %d mat hang sinh boi DataGen\n", N);
@@ -335,6 +383,7 @@ int main() {
     testNhapBanPhim();
     testDocGhiDataMau();
     testTepLoi();
+    testSaoLuu();
     testDuLieuLon();
     std::remove(TAM.c_str());
     if (soLoi == 0) std::printf("\nTAT CA TEST FILEIO DEU QUA\n");

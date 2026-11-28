@@ -113,8 +113,22 @@ std::string soRaChuoi(double x) {
     return buf;
 }
 
-// Ghi vao tep tam, xong moi thay tep that
-KetQua hoanTatGhi(std::ofstream& f, const std::string& tam, const std::string& tep) {
+bool tonTai(const std::string& tep) {
+    std::ifstream f(tep.c_str());
+    return (bool)f;
+}
+
+// Doi ten <tep> thanh <tep>.bak (thay .bak cu). Tep chua co thi khong can sao luu.
+bool doiTenThanhBak(const std::string& tep) {
+    if (!tonTai(tep)) return true;
+    std::string bak = tep + ".bak";
+    std::remove(bak.c_str());   // Windows: rename khong ghi de tep da co
+    return std::rename(tep.c_str(), bak.c_str()) == 0;
+}
+
+// Ghi vao tep tam, xong moi thay tep that. saoLuu: tep cu duoc giu lai thanh <tep>.bak;
+// khong sao luu duoc thi dung lai, khong ghi de.
+KetQua hoanTatGhi(std::ofstream& f, const std::string& tam, const std::string& tep, bool saoLuu) {
     f.flush();
     bool tot = (bool)f;
     f.close();
@@ -122,7 +136,14 @@ KetQua hoanTatGhi(std::ofstream& f, const std::string& tam, const std::string& t
         std::remove(tam.c_str());
         return KQ_LOI_TEP;
     }
-    std::remove(tep.c_str());   // Windows: rename khong ghi de tep da co
+    if (saoLuu) {
+        if (!doiTenThanhBak(tep)) {
+            std::remove(tam.c_str());
+            return KQ_LOI_TEP;
+        }
+    } else {
+        std::remove(tep.c_str());   // Windows: rename khong ghi de tep da co
+    }
     if (std::rename(tam.c_str(), tep.c_str()) != 0) return KQ_LOI_TEP;
     return KQ_OK;
 }
@@ -248,35 +269,42 @@ KetQua docDuLieu(Kho& kho, const std::string& thuMuc) {
 
 // ---- Ghi --------------------------------------------------------------------
 
-KetQua ghiMatHang(const Kho& kho, const std::string& tep) {
+KetQua ghiMatHang(const Kho& kho, const std::string& tep, bool saoLuu) {
     std::string tam = tep + ".tmp";
     std::ofstream f(tam.c_str());
     if (!f) return KQ_LOI_TEP;
     btTraverse(kho.cay, ghiMotMatHang, &f);
-    return hoanTatGhi(f, tam, tep);
+    return hoanTatGhi(f, tam, tep, saoLuu);
 }
 
-KetQua ghiLo(const Kho& kho, const std::string& tep) {
+KetQua ghiLo(const Kho& kho, const std::string& tep, bool saoLuu) {
     std::string tam = tep + ".tmp";
     std::ofstream f(tam.c_str());
     if (!f) return KQ_LOI_TEP;
     btTraverse(kho.cay, ghiLoMotMatHang, &f);
-    return hoanTatGhi(f, tam, tep);
+    return hoanTatGhi(f, tam, tep, saoLuu);
 }
 
-KetQua ghiPhieu(const Kho& kho, const std::string& tep) {
+KetQua ghiPhieu(const Kho& kho, const std::string& tep, bool saoLuu) {
     std::string tam = tep + ".tmp";
     std::ofstream f(tam.c_str());
     if (!f) return KQ_LOI_TEP;
     for (const Phieu* p = kho.phieu.head; p; p = p->next)
         f << taoMaPhieu(p->maPhieu, p->loai) << '|' << tenLoaiPhieu(p->loai) << '|' << formatDate(p->ngay) << '|'
           << p->maVach << '|' << p->soLuong << '|' << soRaChuoi(p->donGia) << '\n';
-    return hoanTatGhi(f, tam, tep);
+    return hoanTatGhi(f, tam, tep, saoLuu);
 }
 
-KetQua ghiDuLieu(const Kho& kho, const std::string& thuMuc) {
-    KetQua a = ghiMatHang(kho, thuMuc + "/mathang.txt");
-    KetQua b = ghiLo(kho, thuMuc + "/lo.txt");
-    KetQua c = ghiPhieu(kho, thuMuc + "/phieu.txt");
+KetQua ghiDuLieu(const Kho& kho, const std::string& thuMuc, bool saoLuu) {
+    KetQua a = ghiMatHang(kho, thuMuc + "/mathang.txt", saoLuu);
+    KetQua b = ghiLo(kho, thuMuc + "/lo.txt", saoLuu);
+    KetQua c = ghiPhieu(kho, thuMuc + "/phieu.txt", saoLuu);
     return (a == KQ_OK && b == KQ_OK && c == KQ_OK) ? KQ_OK : KQ_LOI_TEP;
+}
+
+KetQua saoLuuDuLieu(const std::string& thuMuc) {
+    const char* ten[3] = {"/mathang.txt", "/lo.txt", "/phieu.txt"};
+    bool tot = true;
+    for (int i = 0; i < 3; ++i) tot = doiTenThanhBak(thuMuc + ten[i]) && tot;
+    return tot ? KQ_OK : KQ_LOI_TEP;
 }

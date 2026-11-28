@@ -38,7 +38,7 @@
 ├── Sort.h/.cpp           Mảng động DsMatHang và Merge Sort
 ├── Report.h/.cpp         Tìm kiếm, cảnh báo, báo cáo
 ├── Date.h/.cpp           Kiểu ngày dd/mm/yyyy
-├── FileIO.h/.cpp         Đọc/ghi tệp dữ liệu (bỏ qua và báo dòng lỗi, ghi qua tệp tạm)
+├── FileIO.h/.cpp         Đọc/ghi tệp dữ liệu (bỏ qua và báo dòng lỗi, ghi qua tệp tạm, sao lưu .bak)
 ├── DataGen.h/.cpp        Sinh dữ liệu mẫu và dữ liệu lớn
 ├── Validate.h/.cpp       Nhập dữ liệu từ bàn phím có kiểm tra
 ├── Benchmark.h/.cpp      Thực nghiệm hiệu năng B-Tree
@@ -104,6 +104,7 @@ Các trường phân cách bằng `|`, ngày theo dạng `dd/mm/yyyy`.
 | `phieu.txt` | `maPhieu\|loai\|ngay\|maVach\|soLuong\|donGia` | `PN00001\|NHAP\|02/11/2026\|8930000000001\|16\|63750` |
 
 - Tồn kho **không** được ghi ra tệp. Chương trình tính lại bằng cách cộng số lượng các lô khi đọc.
+- Dòng sai định dạng bị bỏ qua khi đọc (kèm thông báo tên tệp, số dòng, lý do) và **không** được ghi lại. Ở lần lưu đầu tiên mỗi lần chạy, ba tệp cũ được đổi tên thành `*.txt.bak` thay vì bị ghi đè, nên dòng lỗi và các lô liên quan vẫn còn để sửa tay. Lần chạy sau sẽ thay `.bak` bằng dữ liệu lúc mở chương trình, vì vậy hãy sửa từ `.bak` trước khi chạy lại.
 - Mã lô có tiền tố `LO`. Mã phiếu có tiền tố `PN` (phiếu nhập) hoặc `PX` (phiếu xuất), phần số có ít nhất 5 chữ số. Phiếu nhập và phiếu xuất dùng chung một dãy số, nên `PN00006` và `PX00006` không được cùng tồn tại.
 
 ## Kết quả thực nghiệm B-Tree
