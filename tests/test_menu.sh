@@ -80,9 +80,24 @@ printf '0\nc\n' | "$APP" "$TMP/khong_co" > "$TMP/out.txt" 2>&1
 kiemtra "kho rong" "Bat dau voi kho rong"
 kiemtra "luu that bai" "LOI: khong ghi duoc du lieu"
 
+echo "Menu: tep co dong hong -> luu 2 lan + thoat, ban goc van con trong .bak"
+rm -f "$TMP"/*.txt "$TMP"/*.bak
+cp data/mathang.txt data/lo.txt data/phieu.txt "$TMP"/
+sed -i.orig 's/^8930000000002|Mi goi Loai 2|Thuc pham kho|110000|10$/8930000000002|Mi goi Loai 2|Thuc pham kho|11O000|10/' "$TMP/mathang.txt"
+rm -f "$TMP/mathang.txt.orig"
+cp "$TMP/mathang.txt" "$TMP/mathang.goc"; cp "$TMP/lo.txt" "$TMP/lo.goc"
+printf '18\n18\n0\n' | "$APP" "$TMP" > "$TMP/out.txt" 2>&1
+kiemtra "canh bao dong loi khong duoc ghi lai" "se KHONG duoc ghi lai"
+kiemtra "bao vi tri ban sao luu" "Ban luc mo chuong trinh duoc giu o"
+cmp -s "$TMP/mathang.txt.bak" "$TMP/mathang.goc" || { echo "  LOI: mathang.txt.bak khac tep goc"; LOI=$((LOI + 1)); }
+cmp -s "$TMP/lo.txt.bak" "$TMP/lo.goc" || { echo "  LOI: lo.txt.bak khac tep goc"; LOI=$((LOI + 1)); }
+grep -q "^8930000000002|" "$TMP/mathang.txt" && { echo "  LOI: dong hong van duoc ghi lai"; LOI=$((LOI + 1)); }
+
 echo "Menu: sinh du lieu mau 30 mat hang, bac B-Tree 3"
 printf '17\nc\n30\n14\n0\n' | "$APP" "$TMP" 3 > "$TMP/out.txt" 2>&1
 kiemtra "sinh lai va nap" "Da nap 30 mat hang"
+kiemtra "du lieu cu vao .bak" "Du lieu cu duoc giu o"
+[ "$(grep -c '|' "$TMP/mathang.txt.bak")" -eq 34 ] || { echo "  LOI: mathang.txt.bak phai giu du lieu truoc khi sinh"; LOI=$((LOI + 1)); }
 kiemtra "bac 3" "B-Tree bac m = 3: 30 khoa"
 
 rm -rf "$TMP"

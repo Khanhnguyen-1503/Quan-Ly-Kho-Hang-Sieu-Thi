@@ -342,7 +342,7 @@ Tất cả các ca dưới đây đều đạt (\ok).
 37 & BT & Đọc \code{data/} & 35 mặt hàng, 65 lô, 99 phiếu; tồn = tổng lô & \ok \\
 38 & BT & Đọc rồi ghi lại; $10^4$ mặt hàng & Ba tệp giống hệt từng byte & \ok \\
 39 & BT & Thêm, nhập, xuất, xóa; lưu; đọc lại với bậc khác & Trạng thái giống hệt; giữ số thập phân & \ok \\
-40 & Sai & Tệp 17 dòng lỗi (sai số trường, mã, ngày, FIFO, mã phiếu trùng\ldots) & Bỏ qua đúng 17 dòng, báo số dòng & \ok \\
+40 & Sai & Tệp 17 dòng lỗi (sai số trường, mã, ngày, FIFO, mã phiếu trùng\ldots) & Bỏ qua đúng 17 dòng, báo số dòng; khi lưu, tệp gốc giữ nguyên trong \code{.bak} & \ok \\
 41 & Biên & Tệp CRLF, dòng trống; thiếu \code{lo.txt}; thư mục không tồn tại & Đọc bình thường; vẫn nạp mặt hàng; kho rỗng & \ok \\
 42 & BT & Tính nhất quán \code{data/}: lô khớp phiếu, thứ tự FIFO, mã lô/phiếu & 0 lỗi, 0 cảnh báo & \ok \\
 43 & BT & Kịch bản menu 18 chức năng có nhập sai xen kẽ & 36 điều kiện trên màn hình, tệp và mã thoát đều đúng & \ok \\

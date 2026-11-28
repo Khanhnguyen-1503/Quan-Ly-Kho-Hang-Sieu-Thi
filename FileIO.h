@@ -30,6 +30,9 @@ const char* tenLoaiPhieu(LoaiPhieu loai);                                     //
 //   KQ_OK: doc het | KQ_DU_LIEU_SAI: co dong bi bo qua | KQ_LOI_TEP: khong mo duoc tep.
 //   Chap nhan xuong dong LF va CRLF; bo qua dong trong.
 // Ghi: ghi ra <tep>.tmp roi moi thay tep cu, loi giua chung thi tep cu van con.
+//   saoLuu = true: tep cu khong bi xoa ma doi ten thanh <tep>.bak (thay .bak cu). Main dung
+//   o lan luu dau tien moi phien, nen .bak luon la du lieu luc mo chuong trinh, ke ca cac dong
+//   loi da bi bo qua khi doc (va cac lo cua mat hang tren dong loi).
 KetQua docMatHang(Kho& kho, const std::string& tep);
 // Doc sau mathang. Lo cua moi mat hang phai theo thu tu nhap (cu -> moi) = thu tu FIFO.
 // tonKho = tong soLuong cac lo; maLoKeTiep = maLo lon nhat + 1.
@@ -37,11 +40,13 @@ KetQua docLo(Kho& kho, const std::string& tep);
 // maPhieu phai tang dan. Khong bat buoc maVach con trong kho (phieu cua mat hang da xoa
 // van la lich su). maPhieuKeTiep = maPhieu lon nhat + 1.
 KetQua docPhieu(Kho& kho, const std::string& tep);
-KetQua ghiMatHang(const Kho& kho, const std::string& tep);   // theo thu tu ma vach
-KetQua ghiLo(const Kho& kho, const std::string& tep);        // moi mat hang: front -> rear
-KetQua ghiPhieu(const Kho& kho, const std::string& tep);
+KetQua ghiMatHang(const Kho& kho, const std::string& tep, bool saoLuu = false);   // theo ma vach
+KetQua ghiLo(const Kho& kho, const std::string& tep, bool saoLuu = false);        // front -> rear
+KetQua ghiPhieu(const Kho& kho, const std::string& tep, bool saoLuu = false);
 
 // thuMuc chua mathang.txt, lo.txt, phieu.txt. Kho phai rong (vua khoInit).
 // Thieu mathang.txt -> KQ_LOI_TEP; thieu lo.txt / phieu.txt -> coi nhu rong, KQ_DU_LIEU_SAI.
 KetQua docDuLieu(Kho& kho, const std::string& thuMuc);        // goi khi khoi dong
-KetQua ghiDuLieu(const Kho& kho, const std::string& thuMuc);  // goi khi thoat
+KetQua ghiDuLieu(const Kho& kho, const std::string& thuMuc, bool saoLuu = false);  // goi khi thoat
+// Doi ten 3 tep hien co thanh .bak (dung truoc khi sinh du lieu moi de khong mat du lieu cu)
+KetQua saoLuuDuLieu(const std::string& thuMuc);
